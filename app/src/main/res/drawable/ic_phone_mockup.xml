@@ -1,0 +1,59 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="300dp"
+    android:height="400dp"
+    android:viewportWidth="150"
+    android:viewportHeight="200">
+
+    <group
+        android:name="phone_group"
+        android:pivotX="64"
+        android:pivotY="90"
+        android:rotation="15"
+        android:scaleX="1.2"
+        android:scaleY="1.2">
+
+        <path
+            android:fillColor="#222222"
+            android:pathData="M43,23 h64 c5,0 10,5 10,10 v130 c0,5 -5,10 -10,10 h-64 c-5,0 -10,-5 -10,-10 v-130 c0,-5 5,-10 10,-10 z" />
+
+        <path
+            android:fillColor="#121212"
+            android:strokeColor="#8E8E8E"
+            android:strokeWidth="1.8"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M40,20 h64 c5,0 10,5 10,10 v130 c0,5 -5,10 -10,10 h-64 c-5,0 -10,-5 -10,-10 v-130 c0,-5 5,-10 10,-10 z" />
+
+        <path
+            android:fillColor="#2C2C2C"
+            android:pathData="M45,145 h54 c3,0 5,2 5,5 v8 c0,3 -2,5 -5,5 h-54 c-3,0 -5,-2 -5,-5 v-8 c0,-3 2,-5 5,-5 z" />
+        <group android:translateX="-4.5">
+            <group android:translateY="6" android:translateX="-1">
+                <path android:fillColor="#555555" android:pathData="M80,30 h12 v12 h-12 z" />
+                <path android:fillColor="#555555" android:pathData="M96,30 h12 v12 h-12 z" />
+                <path android:fillColor="#555555" android:pathData="M80,47 h12 v12 h-12 z" />
+                <path android:fillColor="#555555" android:pathData="M96,47 h12 v12 h-12 z" />
+                <path android:fillColor="#555555" android:pathData="M48,64 h12 v12 h-12 z" />
+                <path android:fillColor="#555555" android:pathData="M64,64 h12 v12 h-12 z" />
+                <path android:fillColor="#555555" android:pathData="M80,64 h12 v12 h-12 z" />
+                <path android:fillColor="#555555" android:pathData="M96,64 h12 v12 h-12 z" />
+                <path android:fillColor="#555555" android:pathData="M48,81 h12 v12 h-12 z" />
+                <path android:fillColor="#555555" android:pathData="M64,81 h12 v12 h-12 z" />
+                <path android:fillColor="#555555" android:pathData="M80,81 h12 v12 h-12 z" />
+                <path android:fillColor="#555555" android:pathData="M96,81 h12 v12 h-12 z" />
+            </group>
+
+            <group android:name="logo_bocket"
+                android:translateX="51" android:translateY="37">
+                <path
+                    android:fillColor="#555555"
+                    android:strokeColor="#FFD154"
+                    android:strokeWidth="1.5"
+                    android:strokeLineJoin="round"
+                    android:pathData="M1,0 h17 c3,0 5,2 5,5 v17
+                    c0,3 -2,5 -5,5 h-17 c-3,0 -5,-2 -5,-5
+                    v-17 c0,-3 2,-5 5,-5 z"/>
+            </group>
+        </group>
+    </group>
+</vector>
