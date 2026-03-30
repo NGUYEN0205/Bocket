@@ -1,7 +1,9 @@
 package com.example.bocket;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -20,6 +22,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.core.content.ContextCompat;
 
+import com.example.bocket.ui.WelcomeActivity;
 import com.google.common.util.concurrent.ListenableFuture;
 import androidx.camera.core.impl.utils.futures.Futures;
 
@@ -42,6 +45,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // --- BƯỚC 1: KIỂM TRA ĐĂNG NHẬP TRƯỚC KHI SET CONTENT VIEW ---
+        if (!isUserLoggedIn()) {
+            navigateToWelcome();
+            return; // Dừng thực hiện các lệnh bên dưới
+        }
+
         setContentView(R.layout.activity_main);
 
         // Ánh xạ views
@@ -84,6 +93,22 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private boolean isUserLoggedIn() {
+        // Đọc token từ SharedPreferences (cùng tên với cái bạn đã save ở LoginActivity)
+        SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
+        String token = sharedPref.getString("jwt_token", null);
+
+        // Nếu token khác null và không rỗng thì coi như đã đăng nhập
+        return token != null && !token.isEmpty();
+    }
+
+    private void navigateToWelcome() {
+        Intent intent = new Intent(this, WelcomeActivity.class);
+        // Xóa stack cũ để người dùng không bấm Back quay lại MainActivity được
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish(); // Đóng MainActivity
+    }
     // --- CÁC PHƯƠNG THỨC XỬ LÝ CAMERA & QUYỀN ---
 
     // Khởi động CameraX

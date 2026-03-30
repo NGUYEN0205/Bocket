@@ -112,6 +112,14 @@ public class OtpActivity extends AppCompatActivity {
                 } else {
                     // OTP SAI
                     Toast.makeText(OtpActivity.this, "Mã OTP không chính xác!", Toast.LENGTH_SHORT).show();
+                    try {
+                        // Đọc nội dung lỗi thực sự từ server trả về
+                        String errorBody = response.errorBody().string();
+                        android.util.Log.e("SERVER_ERROR", errorBody);
+                        Toast.makeText(OtpActivity.this, "Server trả về: " + errorBody, Toast.LENGTH_LONG).show();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             }
 

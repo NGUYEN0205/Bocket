@@ -1,5 +1,7 @@
 package com.example.bocket.net;
 
+import com.example.bocket.model.LoginRequest;
+import com.example.bocket.model.LoginResponse;
 import com.example.bocket.model.User;
 
 import okhttp3.ResponseBody;
@@ -11,7 +13,7 @@ public interface ApiService {
     @POST("api/auth/register")
     Call<ResponseBody> register(@Body User user);
     @POST("api/auth/login")
-    Call<ResponseBody> login(@Body User user);
+    Call<LoginResponse> login(@Body LoginRequest loginRequest);
     @POST("api/auth/sendOTP")
     Call<ResponseBody> sendOTP(@Body User user);
     @POST("api/auth/verifyOTP")

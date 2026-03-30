@@ -8,7 +8,7 @@ public class RetrofitClient {
     // Hoặc IP cục bộ nếu chạy máy thật (VD: 192.168.1.x)
     private static final String BASE_URL = "http://192.168.102.8:3000/";
     private static RetrofitClient mInstance;
-    private Retrofit retrofit;
+    private static Retrofit retrofit = null;
 
     private RetrofitClient() {
         retrofit = new Retrofit.Builder()
@@ -25,6 +25,16 @@ public class RetrofitClient {
     }
 
     public ApiService getApi() {
+        return retrofit.create(ApiService.class);
+    }
+
+    public static ApiService getApiService() {
+        if (retrofit == null) {
+            retrofit = new Retrofit.Builder()
+                    .baseUrl(BASE_URL)
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build();
+        }
         return retrofit.create(ApiService.class);
     }
 }

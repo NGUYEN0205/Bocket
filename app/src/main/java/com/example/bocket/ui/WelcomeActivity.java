@@ -2,14 +2,13 @@ package com.example.bocket.ui;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.bocket.R;
 
-public class WelcomActivity extends AppCompatActivity {
+public class WelcomeActivity extends AppCompatActivity {
     private Button btnRegister;
     private Button btnLogin;
 
@@ -23,7 +22,7 @@ public class WelcomActivity extends AppCompatActivity {
 
         // Xử lý sự kiện cho nút Đăng ký
         btnRegister.setOnClickListener(v -> {
-            Intent intent = new Intent(WelcomActivity.this, EmailActivity.class);
+            Intent intent = new Intent(WelcomeActivity.this, EmailActivity.class);
             startActivity(intent);
         });
 

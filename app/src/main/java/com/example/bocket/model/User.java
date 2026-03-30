@@ -1,10 +1,14 @@
 package com.example.bocket.model;
 
+import com.google.gson.annotations.SerializedName;
+
 public class User {
     private String username;
     private String password;
     private String display_name;
+    @SerializedName("email")
     private String email;
+    @SerializedName("otp")
     private String otp;
     private String avatar;
 

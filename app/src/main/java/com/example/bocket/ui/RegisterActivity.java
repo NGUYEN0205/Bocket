@@ -136,7 +136,7 @@ public class RegisterActivity extends AppCompatActivity {
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 if (response.isSuccessful()) {
                     Toast.makeText(RegisterActivity.this, "Đăng ký thành công!", Toast.LENGTH_LONG).show();
-                    startActivity(new Intent(RegisterActivity.this, WelcomActivity.class));
+                    startActivity(new Intent(RegisterActivity.this, WelcomeActivity.class));
                     finish();
                 } else {
                     Toast.makeText(RegisterActivity.this, "Lỗi: " + response.code(), Toast.LENGTH_SHORT).show();
