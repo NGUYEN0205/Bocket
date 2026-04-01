@@ -81,9 +81,13 @@ public class EmailActivity extends AppCompatActivity {
             }
 
             @Override
+//            public void onFailure(Call<ResponseBody> call, Throwable t) {
+//                Log.e("RetrofitError", t.getMessage() != null ? t.getMessage() : "Unknown error");
+//                Toast.makeText(EmailActivity.this, "Lỗi kết nối Server!", Toast.LENGTH_SHORT).show();
+//            }
             public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Log.e("RetrofitError", t.getMessage() != null ? t.getMessage() : "Unknown error");
-                Toast.makeText(EmailActivity.this, "Lỗi kết nối Server!", Toast.LENGTH_SHORT).show();
+                Log.e("RetrofitError", "Chi tiết lỗi: ", t); // Dòng này sẽ in đầy đủ StackTrace
+                Toast.makeText(EmailActivity.this, "Lỗi: " + t.getMessage(), Toast.LENGTH_LONG).show();
             }
         });
     }
