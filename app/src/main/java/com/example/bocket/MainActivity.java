@@ -10,6 +10,7 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -17,171 +18,242 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
+import androidx.camera.core.ImageCapture;
+import androidx.camera.core.ImageCaptureException;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.PagerSnapHelper;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.bocket.ui.PostAdapter; // Bạn cần tạo class này
+import com.example.bocket.model.Post;        // Bạn cần tạo class này
+import com.example.bocket.net.ApiService;
+import com.example.bocket.net.PostResponse; // Class chứa list data trả về
+import com.example.bocket.net.RetrofitClient;
+import com.example.bocket.ui.PreviewPostActivity;
 import com.example.bocket.ui.WelcomeActivity;
 import com.google.common.util.concurrent.ListenableFuture;
-import androidx.camera.core.impl.utils.futures.Futures;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
+
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final int REQUEST_CODE_PERMISSIONS = 101;
-    // Mảng chứa các quyền cần thiết
-    private static final String[] REQUIRED_PERMISSIONS = new String[]{Manifest.permission.CAMERA};
-
-    // Ánh xạ các View từ XML
+    // --- VIEW CAMERA ---
     private PreviewView pvCameraPreview;
+    private ConstraintLayout clTopBar, clControls;
+    private View flCameraContainer;
+    private LinearLayout llHistory;
     private ImageButton ibSwitchCamera, ibGallery, ibCapture;
 
-    // Biến để quản lý camera đang được sử dụng (mặc định là Camera Sau)
+    // --- VIEW FEED (HISTORY) ---
+    private RecyclerView rvFeed;
+    private PostAdapter postAdapter;
+    private List<Post> postList = new ArrayList<>();
+
+    // --- CAMERA LOGIC ---
     private int lensFacing = CameraSelector.LENS_FACING_BACK;
-    private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
+    private ImageCapture imageCapture;
+    private ProcessCameraProvider cameraProvider;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        resetToken();
-        // --- BƯỚC 1: KIỂM TRA ĐĂNG NHẬP TRƯỚC KHI SET CONTENT VIEW ---
+
+        // 1. Kiểm tra đăng nhập
         if (!isUserLoggedIn()) {
             navigateToWelcome();
-            return; // Dừng thực hiện các lệnh bên dưới
+            return;
         }
 
         setContentView(R.layout.activity_main);
 
-        // Ánh xạ views
-        pvCameraPreview = findViewById(R.id.pvCameraPreview);
-        ibSwitchCamera = findViewById(R.id.ibSwitchCamera);
-        ibGallery = findViewById(R.id.ibGallery);
-        ibCapture = findViewById(R.id.ibCapture); // Dành cho nút chụp
+        // 2. Khởi tạo Views
+        initViews();
 
-        // 1. KIỂM TRA QUYỀN CAMERA TRƯỚC KHI BẮT ĐẦU
+        // 3. Thiết lập RecyclerView cho Feed
+        setupRecyclerView();
+
+        // 4. Kiểm tra quyền và chạy Camera
         if (allPermissionsGranted()) {
-            startCamera(); // Nếu đã có quyền, bắt đầu camera
+            startCamera();
         } else {
-            // Nếu chưa, yêu cầu cấp quyền
             requestPermissionLauncher.launch(Manifest.permission.CAMERA);
         }
 
-        // 2. XỬ LÝ SỰ KIỆN NÚT ĐỔI CAMERA (Xoay vòng)
+        // 5. Gán sự kiện Click
+        setupClickListeners();
+    }
+
+    private void initViews() {
+        pvCameraPreview = findViewById(R.id.pvCameraPreview);
+        clTopBar = findViewById(R.id.clTopBar);
+        clControls = findViewById(R.id.clControls);
+        flCameraContainer = findViewById(R.id.flCameraContainer);
+        llHistory = findViewById(R.id.llHistory);
+
+        ibSwitchCamera = findViewById(R.id.ibSwitchCamera);
+        ibGallery = findViewById(R.id.ibGallery);
+        ibCapture = findViewById(R.id.ibCapture);
+
+        rvFeed = findViewById(R.id.rvFeed);
+    }
+
+    private void setupRecyclerView() {
+        rvFeed.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
+        // Hiệu ứng lướt từng trang như TikTok
+        PagerSnapHelper snapHelper = new PagerSnapHelper();
+        snapHelper.attachToRecyclerView(rvFeed);
+    }
+
+    private void setupClickListeners() {
+        // Chụp ảnh
+        ibCapture.setOnClickListener(v -> takePhoto());
+
+        // Đổi Camera
         ibSwitchCamera.setOnClickListener(v -> {
-            // Đổi giữa camera sau và trước
-            if (lensFacing == CameraSelector.LENS_FACING_BACK) {
-                lensFacing = CameraSelector.LENS_FACING_FRONT;
-            } else {
-                lensFacing = CameraSelector.LENS_FACING_BACK;
-            }
-            // Khởi động lại camera để áp dụng thay đổi
+            lensFacing = (lensFacing == CameraSelector.LENS_FACING_BACK) ?
+                    CameraSelector.LENS_FACING_FRONT : CameraSelector.LENS_FACING_BACK;
             startCamera();
-        } );
+        });
 
-        // 3. XỬ LÝ SỰ KIỆN NÚT THƯ VIỆN (Gallery)
+        // Mở Gallery
         ibGallery.setOnClickListener(v -> {
-            // Sử dụng Intent để mở thư viện ảnh mặc định
             Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-            intent.setType("image/*"); // Chỉ chọn ảnh
             galleryActivityResultLauncher.launch(intent);
-        } );
+        });
 
-        // Nút chụp (Dành cho chức năng tương lai)
-        ibCapture.setOnClickListener(v -> {
-            Toast.makeText(this, "Chức năng chụp đang phát triển!", Toast.LENGTH_SHORT).show();
+        // MỞ LỊCH SỬ (FEED)
+        llHistory.setOnClickListener(v -> showFeed());
+    }
+
+    // --- LOGIC CHUYỂN ĐỔI GIAO DIỆN ---
+
+    private void showFeed() {
+        // Ẩn UI Camera
+        clTopBar.setVisibility(View.GONE);
+        flCameraContainer.setVisibility(View.GONE);
+        clControls.setVisibility(View.GONE);
+        llHistory.setVisibility(View.GONE);
+
+        // Hiện RecyclerView
+        rvFeed.setVisibility(View.VISIBLE);
+
+        // Tải dữ liệu từ Server
+        loadPostsFromServer();
+    }
+
+    // Hàm này sẽ được gọi từ Adapter khi nhấn nút thoát hoặc nút Capture ở màn hình Feed
+    public void hideFeed() {
+        rvFeed.setVisibility(View.GONE);
+        clTopBar.setVisibility(View.VISIBLE);
+        flCameraContainer.setVisibility(View.VISIBLE);
+        clControls.setVisibility(View.VISIBLE);
+        llHistory.setVisibility(View.VISIBLE);
+    }
+
+    private void loadPostsFromServer() {
+        SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
+        String token = "Bearer " + sharedPref.getString("jwt_token", "");
+
+        ApiService apiService = RetrofitClient.getApiService();
+        apiService.getAllPosts(token).enqueue(new Callback<PostResponse>() {
+            @Override
+            public void onResponse(Call<PostResponse> call, Response<PostResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    postList.clear();
+                    postList.addAll(response.body().getData());
+                    postAdapter = new PostAdapter(MainActivity.this, postList);
+                    rvFeed.setAdapter(postAdapter);
+                }
+            }
+
+            @Override
+            public void onFailure(Call<PostResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "Không thể tải bài viết", Toast.LENGTH_SHORT).show();
+            }
         });
     }
-    private void resetToken() {
-        SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPref.edit();
-        editor.remove("jwt_token"); // Hoặc editor.putString("jwt_token", null);
-        editor.apply(); // Xác nhận xóa
+
+    // --- CAMERA & AUTH LOGIC (GIỮ LẠI TỪ CODE CŨ) ---
+
+    private void startCamera() {
+        ListenableFuture<ProcessCameraProvider> cameraProviderFuture = ProcessCameraProvider.getInstance(this);
+        cameraProviderFuture.addListener(() -> {
+            try {
+                cameraProvider = cameraProviderFuture.get();
+                Preview preview = new Preview.Builder().build();
+                preview.setSurfaceProvider(pvCameraPreview.getSurfaceProvider());
+
+                imageCapture = new ImageCapture.Builder().build();
+                CameraSelector cameraSelector = new CameraSelector.Builder().requireLensFacing(lensFacing).build();
+
+                cameraProvider.unbindAll();
+                cameraProvider.bindToLifecycle(this, cameraSelector, preview, imageCapture);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }, ContextCompat.getMainExecutor(this));
     }
+
+    private void takePhoto() {
+        if (imageCapture == null) return;
+        File photoFile = new File(getExternalFilesDir(null), System.currentTimeMillis() + ".jpg");
+        ImageCapture.OutputFileOptions outputOptions = new ImageCapture.OutputFileOptions.Builder(photoFile).build();
+
+        imageCapture.takePicture(outputOptions, ContextCompat.getMainExecutor(this), new ImageCapture.OnImageSavedCallback() {
+            @Override
+            public void onImageSaved(@NonNull ImageCapture.OutputFileResults results) {
+                navigateToPreview(Uri.fromFile(photoFile));
+            }
+            @Override
+            public void onError(@NonNull ImageCaptureException e) {
+                Toast.makeText(MainActivity.this, "Lỗi: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void navigateToPreview(Uri uri) {
+        Intent intent = new Intent(this, PreviewPostActivity.class);
+        intent.putExtra("image_uri", uri.toString());
+        startActivity(intent);
+    }
+
     private boolean isUserLoggedIn() {
-        // Đọc token từ SharedPreferences (cùng tên với cái bạn đã save ở LoginActivity)
         SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
         String token = sharedPref.getString("jwt_token", null);
-
-        // Nếu token khác null và không rỗng thì coi như đã đăng nhập
         return token != null && !token.isEmpty();
     }
 
     private void navigateToWelcome() {
-        Intent intent = new Intent(this, WelcomeActivity.class);
-        // Xóa stack cũ để người dùng không bấm Back quay lại MainActivity được
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        finish(); // Đóng MainActivity
-    }
-    // --- CÁC PHƯƠNG THỨC XỬ LÝ CAMERA & QUYỀN ---
-
-    // Khởi động CameraX
-    private void startCamera() {
-        cameraProviderFuture = ProcessCameraProvider.getInstance(this);
-        cameraProviderFuture.addListener(() -> {
-            try {
-                // Lấy đối tượng ProcessCameraProvider đã được kết nối
-                ProcessCameraProvider cameraProvider = cameraProviderFuture.get();
-
-                // 1. Thiết lập Use Case: Preview (hiển thị khung hình)
-                Preview preview = new Preview.Builder().build();
-
-                // Kết nối Use Case preview với PreviewView trên giao diện XML
-                preview.setSurfaceProvider(pvCameraPreview.getSurfaceProvider());
-
-                // 2. Thiết lập Camera Selector (chọn camera sau hoặc trước)
-                CameraSelector cameraSelector = new CameraSelector.Builder()
-                        .requireLensFacing(lensFacing)
-                        .build();
-
-                // 3. Ràng buộc các Use Case với Lifecycle của Activity
-                // (Đảm bảo camera được quản lý tự động, không rò rỉ bộ nhớ)
-                cameraProvider.unbindAll(); // Ngắt các kết nối cũ
-                cameraProvider.bindToLifecycle(this, cameraSelector, preview);
-
-            } catch (ExecutionException | InterruptedException e) {
-                // Xử lý lỗi nếu không thể khởi động camera
-                Toast.makeText(this, "Không thể khởi động camera.", Toast.LENGTH_SHORT).show();
-            }
-        }, ContextCompat.getMainExecutor(this)); // Chạy trên UI thread
+        startActivity(new Intent(this, WelcomeActivity.class));
+        finish();
     }
 
-    // Kiểm tra xem tất cả các quyền đã được cấp chưa
     private boolean allPermissionsGranted() {
-        for (String permission : REQUIRED_PERMISSIONS) {
-            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED) {
-                return false;
-            }
-        }
-        return true;
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED;
     }
 
-    // Launcher mới để yêu cầu quyền (giúp code sạch hơn)
     private final ActivityResultLauncher<String> requestPermissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(), isGranted -> {
-                if (isGranted) {
-                    startCamera(); // Đã được cấp quyền, bắt đầu camera
-                } else {
-                    Toast.makeText(this, "Bạn cần cấp quyền Camera để sử dụng!", Toast.LENGTH_LONG).show();
-                    finish(); // Thoát nếu không được quyền
-                }
-            }
-    );
+                if (isGranted) startCamera();
+                else finish();
+            });
 
-    // Launcher để nhận kết quả khi mở thư viện ảnh
     private final ActivityResultLauncher<Intent> galleryActivityResultLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(), result -> {
-                if (result.getResultCode() == AppCompatActivity.RESULT_OK) {
-                    // Người dùng đã chọn ảnh
-                    Intent data = result.getData();
-                    if (data != null) {
-                        Uri selectedImageUri = data.getData();
-                        // Tại đây bạn có thể hiển thị ảnh hoặc xử lý nó
-                        Toast.makeText(this, "Ảnh đã chọn: " + selectedImageUri.toString(), Toast.LENGTH_LONG).show();
-                    }
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    navigateToPreview(result.getData().getData());
                 }
-            }
-    );
+            });
 }

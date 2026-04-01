@@ -40,6 +40,8 @@ dependencies {
 
     implementation(libs.guava)
 
+    implementation(libs.glide)
+    annotationProcessor(libs.glide.compiler)
     // CameraX
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
@@ -56,4 +58,5 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
+
 }
