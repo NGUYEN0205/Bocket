@@ -45,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        resetToken();
         // --- BƯỚC 1: KIỂM TRA ĐĂNG NHẬP TRƯỚC KHI SET CONTENT VIEW ---
         if (!isUserLoggedIn()) {
             navigateToWelcome();
@@ -92,7 +93,12 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, "Chức năng chụp đang phát triển!", Toast.LENGTH_SHORT).show();
         });
     }
-
+    private void resetToken() {
+        SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPref.edit();
+        editor.remove("jwt_token"); // Hoặc editor.putString("jwt_token", null);
+        editor.apply(); // Xác nhận xóa
+    }
     private boolean isUserLoggedIn() {
         // Đọc token từ SharedPreferences (cùng tên với cái bạn đã save ở LoginActivity)
         SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
