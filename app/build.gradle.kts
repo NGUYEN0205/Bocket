@@ -55,6 +55,8 @@ dependencies {
     implementation(libs.google.material)
     implementation(libs.firebase.crashlytics.buildtools)
 
+    implementation(libs.circleimageview)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)

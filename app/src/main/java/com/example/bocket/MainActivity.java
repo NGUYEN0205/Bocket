@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -29,12 +30,14 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.PagerSnapHelper;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.bocket.model.User;
 import com.example.bocket.ui.PostAdapter; // Bạn cần tạo class này
 import com.example.bocket.model.Post;        // Bạn cần tạo class này
 import com.example.bocket.net.ApiService;
 import com.example.bocket.net.PostResponse; // Class chứa list data trả về
 import com.example.bocket.net.RetrofitClient;
 import com.example.bocket.ui.PreviewPostActivity;
+import com.example.bocket.ui.ProfileActivity;
 import com.example.bocket.ui.WelcomeActivity;
 import com.google.common.util.concurrent.ListenableFuture;
 
@@ -54,7 +57,7 @@ public class MainActivity extends AppCompatActivity {
     private ConstraintLayout clTopBar, clControls;
     private View flCameraContainer;
     private LinearLayout llHistory;
-    private ImageButton ibSwitchCamera, ibGallery, ibCapture;
+    private ImageButton ibSwitchCamera, ibGallery, ibCapture, ivAvatar;
 
     // --- VIEW FEED (HISTORY) ---
     private RecyclerView rvFeed;
@@ -80,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
 
         // 2. Khởi tạo Views
         initViews();
-
+        loadUserProfile();
         // 3. Thiết lập RecyclerView cho Feed
         setupRecyclerView();
 
@@ -107,6 +110,8 @@ public class MainActivity extends AppCompatActivity {
         ibCapture = findViewById(R.id.ibCapture);
 
         rvFeed = findViewById(R.id.rvFeed);
+
+        ivAvatar = findViewById(R.id.ivAvatar);
     }
 
     private void setupRecyclerView() {
@@ -135,6 +140,11 @@ public class MainActivity extends AppCompatActivity {
 
         // MỞ LỊCH SỬ (FEED)
         llHistory.setOnClickListener(v -> showFeed());
+
+        ivAvatar.setOnClickListener(v -> {
+            Intent intent = new Intent(this, ProfileActivity.class);
+            startActivity(intent);
+        });
     }
 
     // --- LOGIC CHUYỂN ĐỔI GIAO DIỆN ---
@@ -256,4 +266,49 @@ public class MainActivity extends AppCompatActivity {
                     navigateToPreview(result.getData().getData());
                 }
             });
+
+    private Bitmap decodeBase64ToBitmap(String base64Str) {
+        try {
+            // Nếu chuỗi có chứa prefix của web thì cắt bỏ
+            if (base64Str.contains(",")) {
+                base64Str = base64Str.split(",")[1];
+            }
+            byte[] decodedBytes = android.util.Base64.decode(base64Str, android.util.Base64.DEFAULT);
+            return android.graphics.BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.length);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void loadUserProfile() {
+        SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
+        String token = "Bearer " + sharedPref.getString("jwt_token", "");
+
+        ApiService apiService = RetrofitClient.getApiService();
+        apiService.getUserProfile(token).enqueue(new Callback<User>() {
+            @Override
+            public void onResponse(Call<User> call, Response<User> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    String base64Avatar = response.body().getAvatar();
+
+                    if (base64Avatar != null && !base64Avatar.isEmpty()) {
+                        // Giải mã Base64 sang mảng byte
+                        byte[] imageBytes = android.util.Base64.decode(base64Avatar, android.util.Base64.DEFAULT);
+
+                        // Dùng Glide để load và bo tròn
+                        com.bumptech.glide.Glide.with(MainActivity.this)
+                                .asBitmap()
+                                .load(imageBytes)
+                                .placeholder(R.drawable.ic_avatar_placeholder) // Ảnh hiện khi đang tải
+                                .circleCrop() // Lệnh bo tròn thần thánh
+                                .into(ivAvatar);
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Call<User> call, Throwable t) { }
+        });
+    }
 }

@@ -33,4 +33,6 @@ public interface ApiService {
     );
     @GET("api/posts") // Thay đổi đường dẫn theo đúng API của Server bạn
     Call<PostResponse> getAllPosts(@Header("Authorization") String token);
+    @GET("api/user/profile") // Thay đổi endpoint cho đúng với Node.js của bạn
+    Call<User> getUserProfile(@Header("Authorization") String token);
 }
