@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.util.Base64;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -40,6 +41,13 @@ public class ProfileActivity extends AppCompatActivity {
 
         // 2. Nút Quay lại
         btnBack.setOnClickListener(v -> finish());
+
+        // Trong initViews hoặc onCreate của ProfileActivity
+        LinearLayout llAddFriend = findViewById(R.id.btnAddFriendAction); // Bạn cần đặt ID cho Layout chứa "Kết bạn" ở XML
+        llAddFriend.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, AddFriendActivity.class);
+            startActivity(intent);
+        });
 
         // 3. Tải thông tin User từ Server
         loadUserProfileData();
@@ -78,9 +86,15 @@ public class ProfileActivity extends AppCompatActivity {
             public void onResponse(Call<User> call, Response<User> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     User user = response.body();
+                    String displayName = user.getDisplay_name();
+                    String username = user.getUsername();
 
                     // HIỂN THỊ DỮ LIỆU LÊN GIAO DIỆN
-                    tvProfileNickname.setText(user.getDisplay_name()); // Dùng getter tương ứng của bạn
+                    if (displayName != null && !displayName.trim().isEmpty()) {
+                        tvProfileNickname.setText(displayName);
+                    } else {
+                        tvProfileNickname.setText(username);
+                    } // Dùng getter tương ứng của bạn
                     tvProfileUsername.setText("@" + user.getUsername());
 
                     // XỬ LÝ ẢNH AVATAR (BASE64) BẰNG GLIDE
@@ -102,7 +116,16 @@ public class ProfileActivity extends AppCompatActivity {
                         }
                     }
                 } else {
-                    Toast.makeText(ProfileActivity.this, "Lỗi khi lấy thông tin", Toast.LENGTH_SHORT).show();
+                    // THÊM ĐOẠN NÀY ĐỂ XEM MÃ LỖI LÀ BAO NHIÊU
+                    int statusCode = response.code();
+                    Toast.makeText(ProfileActivity.this, "Lỗi khi lấy thông tin. Mã: " + statusCode, Toast.LENGTH_LONG).show();
+
+                    // Nếu muốn xem chi tiết lỗi server gửi về, có thể log ra:
+                    try {
+                        android.util.Log.e("BOCKET_PROFILE", "Chi tiết lỗi: " + response.errorBody().string());
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 }
             }
 

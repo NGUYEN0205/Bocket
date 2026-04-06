@@ -3,14 +3,19 @@ package com.example.bocket.model;
 import com.google.gson.annotations.SerializedName;
 
 public class User {
+    @SerializedName("Username")
     private String username;
     private String password;
+    @SerializedName("DisplayName")
     private String display_name;
     @SerializedName("email")
     private String email;
     @SerializedName("otp")
     private String otp;
+    @SerializedName("AvatarURL")
     private String avatar;
+    @SerializedName("UserID")
+    private int UserID;
 
     public User(){}
     public User(String username, String password, String display_name, String email, String avatar) {
@@ -67,5 +72,8 @@ public class User {
 
     public String getDisplay_name() {
         return display_name;
+    }
+    public int getUserID() {
+        return UserID;
     }
 }
