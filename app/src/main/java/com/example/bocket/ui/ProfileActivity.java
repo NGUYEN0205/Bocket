@@ -1,9 +1,11 @@
 package com.example.bocket.ui;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Base64;
+import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -26,6 +28,7 @@ public class ProfileActivity extends AppCompatActivity {
     private CircleImageView ivProfileAvatar;
     private TextView tvProfileNickname, tvProfileUsername;
     private ImageButton btnBack;
+    private View btnOpenSetting, btnOpenEditProfile;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,6 +43,19 @@ public class ProfileActivity extends AppCompatActivity {
 
         // 3. Tải thông tin User từ Server
         loadUserProfileData();
+
+        // 4. Mở setting
+        btnOpenSetting.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, SettingActivity.class);
+            startActivity(intent);
+        });
+
+        // 5. Mở chỉnh sửa trang cá nhân
+        btnOpenEditProfile.setOnClickListener(v -> {
+            Intent intent = new Intent(ProfileActivity.this, EditProfileActivity.class);
+
+            startActivity(intent);
+        });
     }
 
     private void initViews() {
@@ -47,6 +63,8 @@ public class ProfileActivity extends AppCompatActivity {
         tvProfileNickname = findViewById(R.id.tvProfileNickname);
         tvProfileUsername = findViewById(R.id.tvProfileUsername);
         btnBack = findViewById(R.id.btnBack);
+        btnOpenSetting = findViewById(R.id.btn_open_settings);
+        btnOpenEditProfile = findViewById(R.id.btn_open_edit_profile);
     }
 
     private void loadUserProfileData() {

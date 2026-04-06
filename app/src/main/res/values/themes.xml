@@ -24,5 +24,8 @@
     <style name="CircleImage">
         <item name="cornerSize">50%</item>
     </style>
+    <style name="CircleImageStyle">
+        <item name="cornerSize">50%</item>
+    </style>
     <style name="Theme.Bocket" parent="Base.Theme.Bocket" />
 </resources>

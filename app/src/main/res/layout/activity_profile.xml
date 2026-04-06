@@ -78,6 +78,7 @@
         app:layout_constraintTop_toBottomOf="@id/ivProfileAvatar">
 
         <LinearLayout
+            android:id="@+id/btn_open_settings"
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:background="@drawable/bg_menu_item"
@@ -99,6 +100,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/btn_open_edit_profile"
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:background="@drawable/bg_menu_item"

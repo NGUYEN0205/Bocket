@@ -40,6 +40,8 @@
         <activity android:name=".ui.PreviewPostActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.NoActionBar"/>
+        <activity android:name=".ui.SettingActivity"/>
+        <activity android:name=".ui.EditProfileActivity"/>
     </application>
 
 </manifest>

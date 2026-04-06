@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1A1A1A"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp">
+
+        <ImageView
+            android:id="@+id/btn_back"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:padding="4dp"
+            android:src="@drawable/ic_back_arrow" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="Settings"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+    </RelativeLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/shape_rounded_gray"
+        android:orientation="vertical"
+        android:padding="8dp">
+
+        <include
+            android:id="@+id/item_report"
+            layout="@layout/layout_menu_row" />
+
+        <include
+            android:id="@+id/item_privacy"
+            layout="@layout/layout_menu_row" />
+
+        <include
+            android:id="@+id/item_notifications"
+            layout="@layout/layout_menu_row" />
+
+        <include
+            android:id="@+id/item_logout"
+            layout="@layout/layout_menu_row" />
+
+    </LinearLayout>
+
+</LinearLayout>

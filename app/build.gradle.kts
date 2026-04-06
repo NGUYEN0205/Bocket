@@ -56,6 +56,7 @@ dependencies {
     implementation(libs.firebase.crashlytics.buildtools)
 
     implementation(libs.circleimageview)
+    implementation(libs.de.hdodenhof.circleimageview)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

@@ -13,6 +13,7 @@ import retrofit2.http.GET;
 import retrofit2.http.Header;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
+import retrofit2.http.PUT;
 import retrofit2.http.Part;
 
 public interface ApiService {
@@ -35,4 +36,7 @@ public interface ApiService {
     Call<PostResponse> getAllPosts(@Header("Authorization") String token);
     @GET("api/user/profile") // Thay đổi endpoint cho đúng với Node.js của bạn
     Call<User> getUserProfile(@Header("Authorization") String token);
+
+    @PUT("api/user/update-profile")
+    Call<ResponseBody> updateProfile(@Header("Authorization") String token, @Body User user);
 }
