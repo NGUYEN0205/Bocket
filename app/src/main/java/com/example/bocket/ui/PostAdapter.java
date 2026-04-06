@@ -1,31 +1,34 @@
 package com.example.bocket.ui;
 
+
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
-
 import com.bumptech.glide.Glide;
-import com.example.bocket.MainActivity;
 import com.example.bocket.R;
 import com.example.bocket.model.Post;
-
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.TimeZone;
+
 
 public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder> {
     private List<Post> postList;
     private Context context;
 
+
     public PostAdapter(Context context, List<Post> postList) {
         this.context = context;
         this.postList = postList;
     }
+
 
     @NonNull
     @Override
@@ -34,53 +37,70 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         return new PostViewHolder(view);
     }
 
+
     @Override
     public void onBindViewHolder(@NonNull PostViewHolder holder, int position) {
         Post post = postList.get(position);
 
-        // 1. Hiển thị nội dung chữ (Content) ở giữa ảnh
-        holder.tvPostContent.setText(post.getContent());
-        if (post.getContent() == null || post.getContent().isEmpty()) {
-            holder.tvPostContent.setVisibility(View.GONE);
+
+        // 1. Hiển thị tên người đăng bài này
+        if (post.getDisplayName() != null) {
+            holder.tvPosterNameAndTime.setText(post.getDisplayName());
+        } else {
+            holder.tvPosterNameAndTime.setText("Người dùng Bocket");
         }
 
-        // 2. Hiển thị thông tin người đăng (Avatar + Tên + Thời gian)
-        holder.tvPosterNameAndTime.setText(post.getDisplayName() + " • " + formatTime(post.getCreatedAt()));
 
-        // 3. Load ảnh bài đăng bằng Glide
+        // 2. Hiển thị nội dung caption (TextView giữa ảnh)
+        holder.tvPostContent.setText(post.getContent());
+
+
+        // 3. Hiển thị thời gian
+        holder.tvTimeAgo.setText(" • " + formatTime(post.getCreatedAt()));
+
+
+        // 4. Load ảnh bài đăng
         Glide.with(context)
                 .load(post.getImageURL())
-                .placeholder(R.color.gray_dark) // Màu nền trong lúc chờ
                 .into(holder.ivPostImage);
 
-        // 4. Load Avatar người đăng
+
+        // 5. Load Avatar của CHỦ BÀI ĐĂNG (Avatar thay đổi theo từng trang)
         Glide.with(context)
                 .load(post.getAvatarURL())
                 .circleCrop()
                 .placeholder(R.drawable.ic_avatar_placeholder)
                 .into(holder.ivPosterAvatar);
-
-        // 5. Xử lý nút quay lại (ibCaptureBack) trong từng item nếu cần
-        holder.ibCaptureBack.setOnClickListener(v -> {
-            if (context instanceof MainActivity) {
-                ((MainActivity) context).hideFeed(); // Gọi hàm ẩn feed ở MainActivity
-            }
-        });
     }
+
 
     @Override
     public int getItemCount() { return postList.size(); }
 
-    // Hàm phụ trợ để định dạng thời gian (Ví dụ: 2026-04-01 -> 5 phút trước)
+
     private String formatTime(String dateStr) {
-        // Bạn có thể dùng thư viện PrettyTime hoặc tự viết logic tính khoảng cách giờ
-        return "vừa xong";
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault());
+            sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+            long time = sdf.parse(dateStr).getTime();
+            long now = System.currentTimeMillis();
+            long diff = now - time;
+
+
+            long minutes = diff / (60 * 1000);
+            long hours = minutes / 60;
+            if (minutes < 1) return "vừa xong";
+            if (minutes < 60) return minutes + " phút trước";
+            if (hours < 24) return hours + " giờ trước";
+            return (hours / 24) + " ngày trước";
+        } catch (Exception e) { return "vừa xong"; }
     }
+
 
     static class PostViewHolder extends RecyclerView.ViewHolder {
         ImageView ivPostImage, ivPosterAvatar;
-        TextView tvPostContent, tvPosterNameAndTime;
-        ImageButton ibCaptureBack;
+        TextView tvPostContent, tvPosterNameAndTime, tvTimeAgo;
+
 
         public PostViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -88,7 +108,7 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             ivPosterAvatar = itemView.findViewById(R.id.ivPosterAvatar);
             tvPostContent = itemView.findViewById(R.id.tvPostContent);
             tvPosterNameAndTime = itemView.findViewById(R.id.tvPosterNameAndTime);
-            ibCaptureBack = itemView.findViewById(R.id.ibCaptureBack);
+            tvTimeAgo = itemView.findViewById(R.id.tvTimeAgo);
         }
     }
 }
