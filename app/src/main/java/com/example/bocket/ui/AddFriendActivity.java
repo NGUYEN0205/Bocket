@@ -5,6 +5,7 @@ import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.widget.*;
 import androidx.appcompat.app.AppCompatActivity;
@@ -87,37 +88,55 @@ public class AddFriendActivity extends AppCompatActivity {
     private void loadAllRequests() {
         String token = getAuthToken();
 
-        // 1. Lấy danh sách LỜI MỜI NHẬN ĐƯỢC (Người khác gửi cho mình)
-        RetrofitClient.getApiService().getPendingRequests(token).enqueue(new Callback<List<User>>() {
-            @Override
-            public void onResponse(Call<List<User>> call, Response<List<User>> response) {
-                if (response.isSuccessful() && response.body() != null) {
-                    List<User> list = response.body();
-                    tvTitleReceived.setVisibility(list.isEmpty() ? View.GONE : View.VISIBLE);
-
-                    FriendRequestAdapter adapter = new FriendRequestAdapter(list, true, userId -> {
-                        acceptFriendRequest(userId); // Bấm "Đồng ý"
-                    });
-                    rvReceived.setAdapter(adapter);
-                }
-            }
-            @Override public void onFailure(Call<List<User>> call, Throwable t) {}
-        });
-
-        // 2. Lấy danh sách LỜI MỜI ĐÃ GỬI (Mình gửi cho người khác)
+        // 1. LẤY DANH SÁCH LỜI MỜI ĐÃ GỬI (SENT)
         RetrofitClient.getApiService().getSentRequests(token).enqueue(new Callback<List<User>>() {
             @Override
             public void onResponse(Call<List<User>> call, Response<List<User>> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     List<User> list = response.body();
-                    tvTitleSent.setText(list.isEmpty() ? "" : "Lời mời đã gửi");
 
-                    // isReceivedType = false để hiện chữ "Đang chờ"
-                    FriendRequestAdapter adapter = new FriendRequestAdapter(list, false, null);
-                    rvSent.setAdapter(adapter);
+                    if (list.isEmpty()) {
+                        tvTitleSent.setText("");
+                    } else {
+                        tvTitleSent.setText("Lời mời đã gửi (" + list.size() + ")");
+                    }
+
+                    // isReceivedType = false vì đây là lời mời mình gửi đi
+                    FriendRequestAdapter sentAdapter = new FriendRequestAdapter(list, false, null);
+                    rvSent.setAdapter(sentAdapter);
                 }
             }
-            @Override public void onFailure(Call<List<User>> call, Throwable t) {}
+            @Override public void onFailure(Call<List<User>> call, Throwable t) {
+                Log.e("BOCKET_DEBUG", "Sent Requests Fail: " + t.getMessage());
+            }
+        });
+
+        // 2. LẤY DANH SÁCH LỜI MỜI NHẬN ĐƯỢC (RECEIVED/PENDING) - ĐOẠN BẠN ĐANG THIẾU
+        RetrofitClient.getApiService().getPendingRequests(token).enqueue(new Callback<List<User>>() {
+            @Override
+            public void onResponse(Call<List<User>> call, Response<List<User>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    List<User> list = response.body();
+
+                    Log.d("BOCKET_DEBUG", "Số lời mời nhận được: " + list.size());
+
+                    if (list.isEmpty()) {
+                        tvTitleReceived.setText("");
+                    } else {
+                        tvTitleReceived.setText("Lời mời đã nhận (" + list.size() + ")");
+                    }
+
+                    // isReceivedType = true để hiện nút "Đồng ý"
+                    // Truyền listener để xử lý khi bấm nút "Đồng ý"
+                    FriendRequestAdapter receivedAdapter = new FriendRequestAdapter(list, true, userId -> {
+                        acceptFriendRequest(userId); // Gọi hàm chấp nhận kết bạn
+                    });
+                    rvReceived.setAdapter(receivedAdapter);
+                }
+            }
+            @Override public void onFailure(Call<List<User>> call, Throwable t) {
+                Log.e("BOCKET_DEBUG", "Pending Requests Fail: " + t.getMessage());
+            }
         });
     }
 
@@ -128,20 +147,44 @@ public class AddFriendActivity extends AppCompatActivity {
                 if (response.isSuccessful() && response.body() != null) {
                     User user = response.body();
                     foundUserId = user.getUserID();
+
+                    // Kiểm tra xem View đã được ánh xạ chưa để tránh NullPointerException
+                    if (cvSearchResult == null || tvResultNickname == null) return;
+
                     cvSearchResult.setVisibility(View.VISIBLE);
 
-                    tvResultNickname.setText(user.getDisplay_name());
+                    // Hiển thị tên (Fallback nếu tên hiển thị rỗng)
+                    String displayName = user.getDisplay_name() != null ? user.getDisplay_name() : user.getUsername();
+                    tvResultNickname.setText(displayName);
                     tvResultUsername.setText("@" + user.getUsername());
 
-                    // Xử lý hiển thị ảnh đại diện (Base64)
-                    if (user.getAvatar() != null && !user.getAvatar().isEmpty()) {
-                        byte[] imageBytes = Base64.decode(user.getAvatar(), Base64.DEFAULT);
-                        Glide.with(AddFriendActivity.this)
-                                .load(imageBytes)
-                                .placeholder(R.drawable.ic_avatar_placeholder)
-                                .circleCrop()
-                                .into(ivResultAvatar);
+                    // XỬ LÝ ẢNH AVATAR AN TOÀN CHỐNG CRASH
+                    String avatarData = user.getAvatar();
+                    if (avatarData != null && !avatarData.isEmpty()) {
+                        try {
+                            // 1. Nếu là chuỗi Base64 có dính tiền tố "data:image/..." -> Cắt bỏ tiền tố
+                            if (avatarData.contains(",")) {
+                                avatarData = avatarData.split(",")[1];
+                            }
+
+                            // Cố gắng giải mã Base64
+                            byte[] imageBytes = Base64.decode(avatarData, Base64.DEFAULT);
+                            Glide.with(AddFriendActivity.this)
+                                    .load(imageBytes)
+                                    .placeholder(R.drawable.ic_avatar_placeholder)
+                                    .circleCrop()
+                                    .into(ivResultAvatar);
+
+                        } catch (IllegalArgumentException e) {
+                            // 2. Nếu nó không phải Base64 (mà là Link URL dạng http://...) thì load thẳng URL
+                            Glide.with(AddFriendActivity.this)
+                                    .load(user.getAvatar())
+                                    .placeholder(R.drawable.ic_avatar_placeholder)
+                                    .circleCrop()
+                                    .into(ivResultAvatar);
+                        }
                     } else {
+                        // Không có ảnh thì hiện ảnh mặc định
                         ivResultAvatar.setImageResource(R.drawable.ic_avatar_placeholder);
                     }
                 } else {
@@ -151,7 +194,7 @@ public class AddFriendActivity extends AppCompatActivity {
             }
 
             @Override public void onFailure(Call<User> call, Throwable t) {
-                Toast.makeText(AddFriendActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                Toast.makeText(AddFriendActivity.this, "Lỗi kết nối API", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -165,14 +208,21 @@ public class AddFriendActivity extends AppCompatActivity {
             public void onResponse(Call<Void> call, Response<Void> response) {
                 if (response.isSuccessful()) {
                     Toast.makeText(AddFriendActivity.this, "Đã gửi lời mời!", Toast.LENGTH_SHORT).show();
-                    cvSearchResult.setVisibility(View.GONE); // Ẩn kết quả tìm kiếm
-                    etSearchUsername.setText(""); // Xóa ô nhập
-                    loadAllRequests(); // Cập nhật lại danh sách trạng thái ở dưới
+                    cvSearchResult.setVisibility(View.GONE);
+                    etSearchUsername.setText("");
+
+                    // Delay 0.5s để SQL Server chắc chắn đã INSERT xong rồi mới tải lại danh sách
+                    new android.os.Handler().postDelayed(() -> {
+                        loadAllRequests();
+                    }, 500);
+
                 } else {
                     Toast.makeText(AddFriendActivity.this, "Yêu cầu đã tồn tại", Toast.LENGTH_SHORT).show();
                 }
             }
-            @Override public void onFailure(Call<Void> call, Throwable t) {}
+            @Override public void onFailure(Call<Void> call, Throwable t) {
+                Toast.makeText(AddFriendActivity.this, "Lỗi mạng", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 

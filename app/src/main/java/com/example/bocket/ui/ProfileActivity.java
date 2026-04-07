@@ -29,41 +29,16 @@ public class ProfileActivity extends AppCompatActivity {
     private CircleImageView ivProfileAvatar;
     private TextView tvProfileNickname, tvProfileUsername;
     private ImageButton btnBack;
-    private View btnOpenSetting, btnOpenEditProfile;
+    private View btnOpenSetting, btnOpenEditProfile,btnAddFriend;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
-        // 1. Ánh xạ Views
         initViews();
-
-        // 2. Nút Quay lại
-        btnBack.setOnClickListener(v -> finish());
-
-        // Trong initViews hoặc onCreate của ProfileActivity
-        LinearLayout llAddFriend = findViewById(R.id.btnAddFriendAction); // Bạn cần đặt ID cho Layout chứa "Kết bạn" ở XML
-        llAddFriend.setOnClickListener(v -> {
-            Intent intent = new Intent(ProfileActivity.this, AddFriendActivity.class);
-            startActivity(intent);
-        });
-
-        // 3. Tải thông tin User từ Server
+        setupClickListeners(); // Tách riêng logic click cho sạch code
         loadUserProfileData();
-
-        // 4. Mở setting
-        btnOpenSetting.setOnClickListener(v -> {
-            Intent intent = new Intent(ProfileActivity.this, SettingActivity.class);
-            startActivity(intent);
-        });
-
-        // 5. Mở chỉnh sửa trang cá nhân
-        btnOpenEditProfile.setOnClickListener(v -> {
-            Intent intent = new Intent(ProfileActivity.this, EditProfileActivity.class);
-
-            startActivity(intent);
-        });
     }
 
     private void initViews() {
@@ -71,10 +46,33 @@ public class ProfileActivity extends AppCompatActivity {
         tvProfileNickname = findViewById(R.id.tvProfileNickname);
         tvProfileUsername = findViewById(R.id.tvProfileUsername);
         btnBack = findViewById(R.id.btnBack);
+
+        // Ánh xạ 3 nút này giống hệt nhau
         btnOpenSetting = findViewById(R.id.btn_open_settings);
         btnOpenEditProfile = findViewById(R.id.btn_open_edit_profile);
+        btnAddFriend = findViewById(R.id.btnAddFriendAction);
     }
+    private void setupClickListeners() {
+        btnBack.setOnClickListener(v -> finish());
 
+        // Mở màn hình Thêm bạn
+        if (btnAddFriend != null) {
+            btnAddFriend.setOnClickListener(v -> {
+                Intent intent = new Intent(ProfileActivity.this, AddFriendActivity.class);
+                startActivity(intent);
+            });
+        }
+
+        // Mở setting
+        btnOpenSetting.setOnClickListener(v -> {
+            startActivity(new Intent(ProfileActivity.this, SettingActivity.class));
+        });
+
+        // Mở chỉnh sửa
+        btnOpenEditProfile.setOnClickListener(v -> {
+            startActivity(new Intent(ProfileActivity.this, EditProfileActivity.class));
+        });
+    }
     private void loadUserProfileData() {
         SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
         // Lấy Token đã lưu khi đăng nhập thành công
