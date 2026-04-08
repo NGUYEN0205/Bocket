@@ -21,8 +21,8 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginHorizontal="30dp"
-        android:layout_marginTop="80dp"
-        android:layout_marginBottom="180dp"
+        android:layout_marginTop="90dp"
+        android:layout_marginBottom="190dp"
         android:background="@drawable/shape_rounded_camera"
         android:clipToOutline="true"
         android:elevation="2dp"
@@ -63,13 +63,14 @@
             android:background="@drawable/shape_capsule_gray"
             android:paddingHorizontal="20dp"
             android:paddingVertical="10dp"
-            android:text="19 người bạn"
+            android:clickable="true"
+            android:focusable="true"
+            android:text="Mọi người"
             android:textColor="@android:color/white"
             app:layout_constraintBottom_toBottomOf="@+id/ivAvatar"
             app:layout_constraintEnd_toStartOf="@+id/ibFilter"
             app:layout_constraintStart_toEndOf="@+id/ivAvatar"
             app:layout_constraintTop_toTopOf="@+id/ivAvatar" />
-
 
         <ImageButton
             android:id="@+id/ibFilter"
@@ -195,4 +196,23 @@
             android:textSize="18sp"
             android:textStyle="bold" />
     </LinearLayout>
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvFriendsList"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="30dp"
+        android:layout_marginRight="30dp"
+        android:background="@drawable/shape_top_rounded_dark"
+        android:elevation="100dp"
+        android:visibility="gone"
+        android:paddingTop="10dp"
+        android:clipToPadding="false"
+        app:layout_constrainedHeight="true"
+        app:layout_constraintHeight_max="450dp"
+        app:layout_constraintTop_toBottomOf="@+id/clTopBar"
+        app:layout_constraintStart_toStartOf="@+id/tvFriendCount"
+        app:layout_constraintEnd_toEndOf="@+id/tvFriendCount"
+        app:layout_constraintVertical_bias="0.0"
+        tools:ignore="NotSibling" />
 </androidx.constraintlayout.widget.ConstraintLayout>

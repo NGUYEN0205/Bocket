@@ -58,4 +58,10 @@ public interface ApiService {
     Call<List<User>> getPendingRequests(@Header("Authorization") String token);
     @GET("api/friends/sent")
     Call<List<User>> getSentRequests(@Header("Authorization") String token);
+    @GET("api/friends/my-friends")
+    Call<List<User>> getFriendsList(@Header("Authorization") String token);
+    @GET("api/posts/user/{userId}")
+    Call<PostResponse> getPostsByUser(@Header("Authorization") String token, @Path("userId") int userId);
+    @GET("api/posts/friends-feed")
+    Call<PostResponse> getFriendPosts(@Header("Authorization") String token);
 }

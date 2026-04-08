@@ -75,7 +75,7 @@ public class RegisterActivity extends AppCompatActivity {
         // 2. Cấu hình Retrofit kết nối tới Server Node.js
         // Lưu ý: Dùng 10.0.2.2 nếu chạy máy ảo Android, hoặc IP máy tính nếu chạy máy thật
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("http://192.168.102.11:3000/")
+                .baseUrl("http://192.168.102.8:3000/")
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
 
@@ -114,6 +114,7 @@ public class RegisterActivity extends AppCompatActivity {
             Toast.makeText(this, "Vui lòng nhập đầy đủ thông tin", Toast.LENGTH_SHORT).show();
             return;
         }
+
 
         // 1. Xử lý ảnh đại diện thành chuỗi Base64
         Bitmap smallBitmap = getResizedBitmap(selectedBitmap, 500);

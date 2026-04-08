@@ -1,0 +1,34 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="60dp"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="24dp"
+    android:background="?attr/selectableItemBackground">
+
+    <ImageView
+        android:id="@+id/ivFriendAvatar"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:scaleType="centerCrop"
+        android:src="@drawable/ic_avatar_placeholder" />
+
+    <TextView
+        android:id="@+id/tvFriendName"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="20dp"
+        android:text="Tên bạn bè"
+        android:textColor="#FFFFFF"
+        android:textSize="17sp" />
+    <ImageView
+        android:id="@+id/ivGoToPosts"
+        android:layout_width="34dp"
+        android:layout_height="34dp"
+        android:src="@drawable/ic_arrow_right"
+        app:tint="#A8A8A8"
+        android:padding="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless" />
+</LinearLayout>

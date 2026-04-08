@@ -12,6 +12,7 @@ import android.provider.MediaStore;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 
@@ -38,6 +39,7 @@ import com.example.bocket.model.User;
 import com.example.bocket.net.ApiService;
 import com.example.bocket.net.PostResponse;
 import com.example.bocket.net.RetrofitClient;
+import com.example.bocket.ui.FriendsAdapter;
 import com.example.bocket.ui.PostAdapter;
 import com.example.bocket.ui.PreviewPostActivity;
 import com.example.bocket.ui.ProfileActivity;
@@ -77,6 +79,11 @@ public class MainActivity extends AppCompatActivity {
     private int lensFacing = CameraSelector.LENS_FACING_BACK;
     private ImageCapture imageCapture;
     private ProcessCameraProvider cameraProvider;
+    private RecyclerView rvFriendsList;
+    private TextView tvFriendCount;
+    private boolean isFirendsListVisible = false;
+    private FriendsAdapter friendsAdapter;
+    private List<User> friendsList = new ArrayList<>();
 
 
     @Override
@@ -140,6 +147,19 @@ public class MainActivity extends AppCompatActivity {
         ibCaptureBack = findViewById(R.id.ibCaptureBack);
         ibGalleryHistory = findViewById(R.id.ibGalleryHistory);
         ibSwitchCameraBack = findViewById(R.id.ibSwitchCameraBack);
+
+        rvFriendsList = findViewById(R.id.rvFriendsList);
+        tvFriendCount = findViewById(R.id.tvFriendCount);
+
+        rvFriendsList.setLayoutManager(new LinearLayoutManager(this));
+        friendsAdapter = new FriendsAdapter(this, friendsList);
+        rvFriendsList.setAdapter(friendsAdapter);
+
+        friendsAdapter.setOnFriendClickListener(friend -> {
+            hideFriendsList();
+            // Gọi API lấy bài viết của riêng người này
+            loadUserPostsOnly(friend.getUserID());
+        });
     }
 
 
@@ -155,7 +175,10 @@ public class MainActivity extends AppCompatActivity {
         ibCapture.setOnClickListener(v -> takePhoto());
         ibSwitchCamera.setOnClickListener(v -> toggleCamera());
         ibGallery.setOnClickListener(v -> openGallery());
-        llHistory.setOnClickListener(v -> showFeed());
+        llHistory.setOnClickListener(v -> {
+            loadPostsFromServer();
+            showFeed();
+        });
         ivAvatar.setOnClickListener(v -> {
             Intent intent = new Intent(this, ProfileActivity.class);
             startActivity(intent);
@@ -166,6 +189,15 @@ public class MainActivity extends AppCompatActivity {
         ibCaptureBack.setOnClickListener(v -> hideFeed());
         ibGalleryHistory.setOnClickListener(v -> openGallery());
         ibSwitchCameraBack.setOnClickListener(v -> toggleCamera());
+
+        tvFriendCount.setOnClickListener(v -> {
+            if (!isFirendsListVisible){
+                showFriendsList();
+            } else {
+                hideFriendsList();
+            }
+
+        });
     }
 
 
@@ -196,7 +228,7 @@ public class MainActivity extends AppCompatActivity {
         clControlsHistory.setVisibility(View.VISIBLE);
 
 
-        loadPostsFromServer();
+        //loadPostsFromServer();
     }
 
 
@@ -249,7 +281,7 @@ public class MainActivity extends AppCompatActivity {
 
 
         ApiService apiService = RetrofitClient.getApiService();
-        apiService.getAllPosts(token).enqueue(new Callback<PostResponse>() {
+        apiService.getFriendPosts(token).enqueue(new Callback<PostResponse>() {
             @Override
             public void onResponse(Call<PostResponse> call, Response<PostResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
@@ -352,4 +384,89 @@ public class MainActivity extends AppCompatActivity {
                     navigateToPreview(result.getData().getData());
                 }
             });
+
+    private void showFriendsList(){
+        isFirendsListVisible = true;
+        rvFriendsList.setVisibility(View.VISIBLE);
+        rvFriendsList.bringToFront();
+        rvFriendsList.scrollToPosition(0);
+        android.util.Log.d("DEBUG_FRIENDS", "Đang bắt đầu load bạn bè...");
+
+        loadFriendsFromServer();
+    }
+
+    private void hideFriendsList(){
+        isFirendsListVisible = false;
+        rvFriendsList.setVisibility(View.GONE);
+    }
+
+    public void onBackPressed(){
+        if (isFirendsListVisible){
+            hideFriendsList();
+        }
+        else {
+            super.onBackPressed();
+        }
+    }
+
+    private void loadFriendsFromServer() {
+        SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
+        String token = "Bearer " + sharedPref.getString("jwt_token", "");
+
+        ApiService apiService = RetrofitClient.getApiService();
+        apiService.getFriendsList(token).enqueue(new Callback<List<User>>() {
+            @Override
+            public void onResponse(Call<List<User>> call, Response<List<User>> response) {
+                // Trong hàm loadFriendsFromServer()
+                if (response.isSuccessful() && response.body() != null) {
+                    friendsList.clear();
+                    friendsList.addAll(response.body());
+                    friendsAdapter.notifyDataSetChanged();
+
+                    // Log kiểm tra số lượng thực tế
+                    android.util.Log.d("DEBUG_FRIENDS", "Đã nạp: " + friendsList.size());
+                }else {
+                    android.util.Log.e("DEBUG_FRIENDS", "Lỗi phản hồi: " + response.code());
+                }
+            }
+            @Override
+            public void onFailure(Call<List<User>> call, Throwable t) {
+                android.util.Log.e("DEBUG_FRIENDS", "Lỗi kết nối: " + t.getMessage());
+            }
+        });
+    }
+
+    private void loadUserPostsOnly(int targetUserId) {
+        SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
+        String token = "Bearer " + sharedPref.getString("jwt_token", "");
+
+        ApiService apiService = RetrofitClient.getApiService();
+        apiService.getPostsByUser(token, targetUserId).enqueue(new Callback<PostResponse>() {
+            @Override
+            public void onResponse(Call<PostResponse> call, Response<PostResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    postList.clear();
+                    postList.addAll(response.body().getData());
+
+                    // --- ĐOẠN SỬA QUAN TRỌNG ---
+                    if (postAdapter == null) {
+                        // Nếu chưa có Adapter thì phải khởi tạo và gắn vào RecyclerView
+                        postAdapter = new PostAdapter(MainActivity.this, postList);
+                        rvFeed.setAdapter(postAdapter);
+                    } else {
+                        // Nếu đã có rồi thì mới báo update
+                        postAdapter.notifyDataSetChanged();
+                    }
+                    // ---------------------------
+
+                    showFeed(); // Hiện màn hình Feed
+                }
+            }
+
+            @Override
+            public void onFailure(Call<PostResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
 }
