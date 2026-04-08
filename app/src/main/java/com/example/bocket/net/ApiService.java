@@ -2,6 +2,7 @@ package com.example.bocket.net;
 
 import com.example.bocket.model.LoginRequest;
 import com.example.bocket.model.LoginResponse;
+import com.example.bocket.model.Post;
 import com.example.bocket.model.User;
 
 import java.util.List;
@@ -38,6 +39,13 @@ public interface ApiService {
     );
     @GET("api/posts") // Thay đổi đường dẫn theo đúng API của Server bạn
     Call<PostResponse> getAllPosts(@Header("Authorization") String token);
+
+    // Thêm dòng này vào ApiService.java
+    @GET("api/posts/friends/{userId}")
+    Call<List<Post>> getFriendPosts(
+            @Header("Authorization") String token,
+            @Path("userId") int userId
+    );
     @GET("api/auth/profile") // Thay đổi endpoint cho đúng với Node.js của bạn
     Call<User> getUserProfile(@Header("Authorization") String token);
 
@@ -64,4 +72,7 @@ public interface ApiService {
     Call<PostResponse> getPostsByUser(@Header("Authorization") String token, @Path("userId") int userId);
     @GET("api/posts/friends-feed")
     Call<PostResponse> getFriendPosts(@Header("Authorization") String token);
+
+    @POST("api/auth/reset-password") // Đường dẫn khớp với route ở Server
+    Call<ResponseBody> resetPassword(@Body User user); // Dùng model User có chứa email và password
 }

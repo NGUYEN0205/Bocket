@@ -75,7 +75,7 @@ public class RegisterActivity extends AppCompatActivity {
         // 2. Cấu hình Retrofit kết nối tới Server Node.js
         // Lưu ý: Dùng 10.0.2.2 nếu chạy máy ảo Android, hoặc IP máy tính nếu chạy máy thật
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("http://192.168.102.8:3000/")
+                .baseUrl("http://192.168.102.11:3000/")
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
 
@@ -106,50 +106,76 @@ public class RegisterActivity extends AppCompatActivity {
     private void performRegistration() {
         String username = edtUsername.getText().toString().trim();
         String password = edtPassword.getText().toString().trim();
-
-        // Lấy email được truyền từ EmailActivity/OtpActivity qua Intent
         String email = getIntent().getStringExtra("email");
 
         if (username.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Vui lòng nhập đầy đủ thông tin", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Vui lòng nhập đủ thông tin", Toast.LENGTH_SHORT).show();
             return;
         }
 
+        // Vô hiệu hóa nút để tránh người dùng bấm nhiều lần
+        btnRegisterSubmit.setEnabled(false);
+        Toast.makeText(this, "Đang xử lý đăng ký...", Toast.LENGTH_SHORT).show();
 
-        // 1. Xử lý ảnh đại diện thành chuỗi Base64
-        Bitmap smallBitmap = getResizedBitmap(selectedBitmap, 500);
-        String avatarBase64 = encodeImageToBase64(smallBitmap);
-
-        // 2. Tạo đối tượng User với đầy đủ các trường
-        // display_name truyền vào là null hoặc "" để server tự lấy theo username
-        User userRequest = new User();
-        userRequest.setUsername(username);
-        userRequest.setPassword(password);
-        userRequest.setDisplay_name(""); // Để trống để Server xử lý gán bằng username
-        userRequest.setEmail(email);     // Email từ màn hình trước
-        userRequest.setAvatar(avatarBase64);
-
-        Toast.makeText(this, "Đang đăng ký...", Toast.LENGTH_SHORT).show();
-
-        // 3. Gửi API
-        apiService.register(userRequest).enqueue(new Callback<ResponseBody>() {
-            @Override
-            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                if (response.isSuccessful()) {
-                    Toast.makeText(RegisterActivity.this, "Đăng ký thành công!", Toast.LENGTH_LONG).show();
-                    startActivity(new Intent(RegisterActivity.this, WelcomeActivity.class));
-                    finish();
-                } else {
-                    Toast.makeText(RegisterActivity.this, "Lỗi: " + response.code(), Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            // --- XỬ LÝ ẢNH TRONG THREAD ---
+            String finalAvatarBase64 = ""; // Dùng tên biến khác hoặc khởi tạo ở đây
+            if (selectedBitmap != null) {
+                try {
+                    // Nén ảnh nhỏ lại (tầm 300px là đủ cho avatar)
+                    Bitmap smallBitmap = getResizedBitmap(selectedBitmap, 300);
+                    finalAvatarBase64 = encodeImageToBase64(smallBitmap);
+                    Log.d("DEBUG_AVATAR", "Độ dài chuỗi Base64: " + finalAvatarBase64.length());
+                } catch (Exception e) {
+                    Log.e("DEBUG_AVATAR", "Lỗi xử lý ảnh: " + e.getMessage());
                 }
             }
 
-            @Override
-            public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Log.e("API_ERROR", "Lỗi: " + t.getMessage());
-                Toast.makeText(RegisterActivity.this, "Lỗi kết nối Server!", Toast.LENGTH_SHORT).show();
-            }
-        });
+            // Tạo đối tượng User để gửi đi
+            User userRequest = new User();
+            userRequest.setUsername(username);
+            userRequest.setPassword(password);
+            userRequest.setDisplay_name(username);
+            userRequest.setEmail(email);
+            userRequest.setAvatar(finalAvatarBase64);
+
+            // --- QUAY LẠI UI THREAD ĐỂ GỌI API ---
+            runOnUiThread(() -> {
+                apiService.register(userRequest).enqueue(new Callback<ResponseBody>() {
+                    @Override
+                    public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                        btnRegisterSubmit.setEnabled(true);
+                        if (response.isSuccessful()) {
+                            Toast.makeText(RegisterActivity.this, "Đăng ký thành công!", Toast.LENGTH_LONG).show();
+                            startActivity(new Intent(RegisterActivity.this, LoginActivity.class));
+                            finish();
+                        } else {
+                            try {
+                                String errorStr = response.errorBody() != null ? response.errorBody().string() : "Unknown error";
+                                Log.e("REG_ERR", "Server Error: " + errorStr);
+                            } catch (Exception e) {}
+                            Toast.makeText(RegisterActivity.this, "Lỗi Server: " + response.code(), Toast.LENGTH_SHORT).show();
+                        }
+                    }
+
+                    @Override
+                    public void onFailure(Call<ResponseBody> call, Throwable t) {
+                        btnRegisterSubmit.setEnabled(true);
+                        Log.e("REG_ERR", "Connection Failed: " + t.getMessage());
+                        Toast.makeText(RegisterActivity.this, "Mất kết nối!", Toast.LENGTH_SHORT).show();
+                    }
+                });
+            });
+        }).start();
+    }
+
+    private String encodeImageToBase64(Bitmap bitmap) {
+        if (bitmap == null) return "";
+        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+        // Giảm chất lượng xuống 20-30% để giảm tải cho Server
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 25, baos);
+        byte[] b = baos.toByteArray();
+        return android.util.Base64.encodeToString(b, android.util.Base64.NO_WRAP); // Dùng NO_WRAP để tránh xuống dòng trong chuỗi
     }
 
     private void showImagePickDialog(){
@@ -177,15 +203,6 @@ public class RegisterActivity extends AppCompatActivity {
     private void openCamera() {
         Intent takePicture = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         cameraLauncher.launch(takePicture);
-    }
-
-    private String encodeImageToBase64(Bitmap bitmap) {
-        if (bitmap == null) return null;
-        java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-        // Nén ảnh xuống chất lượng 70 để tránh quá tải dung lượng (Request Entity Too Large)
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 30, baos);
-        byte[] b = baos.toByteArray();
-        return android.util.Base64.encodeToString(b, android.util.Base64.DEFAULT);
     }
 
     private Bitmap getResizedBitmap(Bitmap image, int maxSize) {

@@ -1,6 +1,5 @@
 package com.example.bocket.ui;
 
-
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,23 +11,24 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.example.bocket.R;
 import com.example.bocket.model.Post;
+// --- DÒNG QUAN TRỌNG NHẤT ---
+// Bạn phải import đúng đường dẫn đến file RetrofitClient đã tạo
+import com.example.bocket.net.RetrofitClient;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.TimeZone;
 
-
 public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder> {
     private List<Post> postList;
     private Context context;
-
 
     public PostAdapter(Context context, List<Post> postList) {
         this.context = context;
         this.postList = postList;
     }
-
 
     @NonNull
     @Override
@@ -37,46 +37,58 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         return new PostViewHolder(view);
     }
 
-
     @Override
     public void onBindViewHolder(@NonNull PostViewHolder holder, int position) {
         Post post = postList.get(position);
+        String avatarData = post.getAvatarURL();
 
+        // 1. Hiển thị tên
+        holder.tvPosterNameAndTime.setText(post.getDisplayName() != null ? post.getDisplayName() : "Người dùng Bocket");
 
-        // 1. Hiển thị tên người đăng bài này
-        if (post.getDisplayName() != null) {
-            holder.tvPosterNameAndTime.setText(post.getDisplayName());
-        } else {
-            holder.tvPosterNameAndTime.setText("Người dùng Bocket");
-        }
-
-
-        // 2. Hiển thị nội dung caption (TextView giữa ảnh)
+        // 2. Nội dung caption
         holder.tvPostContent.setText(post.getContent());
 
-
-        // 3. Hiển thị thời gian
+        // 3. Thời gian
         holder.tvTimeAgo.setText(" • " + formatTime(post.getCreatedAt()));
 
+        // 4. Load ảnh bài đăng (Lưu ý: Nếu link ảnh cũng là đường dẫn tương đối, hãy thêm RetrofitClient.BASE_URL vào đây)
+        String postImageUrl = post.getImageURL();
+        if (postImageUrl != null && !postImageUrl.startsWith("http")) {
+            postImageUrl = RetrofitClient.BASE_URL + postImageUrl;
+        }
+        Glide.with(context).load(postImageUrl).into(holder.ivPostImage);
 
-        // 4. Load ảnh bài đăng
-        Glide.with(context)
-                .load(post.getImageURL())
-                .into(holder.ivPostImage);
-
-
-        // 5. Load Avatar của CHỦ BÀI ĐĂNG (Avatar thay đổi theo từng trang)
-        Glide.with(context)
-                .load(post.getAvatarURL())
-                .circleCrop()
-                .placeholder(R.drawable.ic_avatar_placeholder)
-                .into(holder.ivPosterAvatar);
+        // 5. Xử lý Avatar chủ bài đăng
+        if (avatarData != null && !avatarData.isEmpty()) {
+            if (avatarData.startsWith("http")) {
+                displayAvatar(avatarData, holder.ivPosterAvatar);
+            } else if (avatarData.length() > 200) {
+                try {
+                    if (avatarData.contains(",")) avatarData = avatarData.split(",")[1];
+                    byte[] imageBytes = android.util.Base64.decode(avatarData, android.util.Base64.DEFAULT);
+                    Glide.with(context).asBitmap().load(imageBytes).circleCrop()
+                            .placeholder(R.drawable.ic_avatar_placeholder).into(holder.ivPosterAvatar);
+                } catch (Exception e) {
+                    holder.ivPosterAvatar.setImageResource(R.drawable.ic_avatar_placeholder);
+                }
+            } else {
+                // SỬ DỤNG RetrofitClient TỪ ĐƯỜNG DẪN ĐÃ IMPORT
+                String fullUrl = RetrofitClient.BASE_URL + avatarData;
+                displayAvatar(fullUrl, holder.ivPosterAvatar);
+            }
+        } else {
+            holder.ivPosterAvatar.setImageResource(R.drawable.ic_avatar_placeholder);
+        }
     }
 
+    private void displayAvatar(Object source, ImageView imageView) {
+        Glide.with(context).load(source).circleCrop()
+                .placeholder(R.drawable.ic_avatar_placeholder)
+                .error(R.drawable.ic_avatar_placeholder).into(imageView);
+    }
 
     @Override
     public int getItemCount() { return postList.size(); }
-
 
     private String formatTime(String dateStr) {
         try {
@@ -85,8 +97,6 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
             long time = sdf.parse(dateStr).getTime();
             long now = System.currentTimeMillis();
             long diff = now - time;
-
-
             long minutes = diff / (60 * 1000);
             long hours = minutes / 60;
             if (minutes < 1) return "vừa xong";
@@ -96,11 +106,9 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
         } catch (Exception e) { return "vừa xong"; }
     }
 
-
     static class PostViewHolder extends RecyclerView.ViewHolder {
         ImageView ivPostImage, ivPosterAvatar;
         TextView tvPostContent, tvPosterNameAndTime, tvTimeAgo;
-
 
         public PostViewHolder(@NonNull View itemView) {
             super(itemView);

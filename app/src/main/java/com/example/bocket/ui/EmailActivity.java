@@ -33,13 +33,14 @@ public class EmailActivity extends AppCompatActivity {
         btnBack = findViewById(R.id.btnBack);
         etEmail = findViewById(R.id.etEmail);
 
-        btnContinue.setOnClickListener(v -> {
-            validateEmail();
-        });
+        // --- BỔ SUNG: Nhận dữ liệu tự động điền ---
+        String prefillEmail = getIntent().getStringExtra("email_prefill");
+        if (prefillEmail != null && !prefillEmail.isEmpty()) {
+            etEmail.setText(prefillEmail);
+        }
 
-        btnBack.setOnClickListener(v-> finish());
-
-
+        btnContinue.setOnClickListener(v -> validateEmail());
+        btnBack.setOnClickListener(v -> finish());
     }
 
     private void validateEmail(){
@@ -61,34 +62,23 @@ public class EmailActivity extends AppCompatActivity {
         }
     }
 
-    private void sendOtpToServer(String email){
+    private void sendOtpToServer(String email) {
+        String mode = getIntent().getStringExtra("mode"); // Lấy nhãn từ Login gửi sang
         User user = new User();
         user.setEmail(email);
 
-        Toast.makeText(this, "Đang gửi mã...", Toast.LENGTH_SHORT).show();
-
-        RetrofitClient.getInstance().getApi().sendOTP(user).enqueue(new retrofit2.Callback<ResponseBody>() {
+        RetrofitClient.getInstance().getApi().sendOTP(user).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 if (response.isSuccessful()) {
-                    Toast.makeText(EmailActivity.this, "Mã OTP đã được gửi!", Toast.LENGTH_SHORT).show();
                     Intent intent = new Intent(EmailActivity.this, OtpActivity.class);
                     intent.putExtra("email", email);
+                    intent.putExtra("mode", mode); // Tiếp tục truyền nhãn sang trang OTP
                     startActivity(intent);
-                } else {
-                    Toast.makeText(EmailActivity.this, "Lỗi: " + response.code(), Toast.LENGTH_SHORT).show();
                 }
             }
-
             @Override
-//            public void onFailure(Call<ResponseBody> call, Throwable t) {
-//                Log.e("RetrofitError", t.getMessage() != null ? t.getMessage() : "Unknown error");
-//                Toast.makeText(EmailActivity.this, "Lỗi kết nối Server!", Toast.LENGTH_SHORT).show();
-//            }
-            public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Log.e("RetrofitError", "Chi tiết lỗi: ", t); // Dòng này sẽ in đầy đủ StackTrace
-                Toast.makeText(EmailActivity.this, "Lỗi: " + t.getMessage(), Toast.LENGTH_LONG).show();
-            }
+            public void onFailure(Call<ResponseBody> call, Throwable t) { /* Log lỗi */ }
         });
     }
 }

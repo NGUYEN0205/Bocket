@@ -43,6 +43,7 @@
         <activity android:name=".ui.SettingActivity"/>
         <activity android:name=".ui.EditProfileActivity"/>
         <activity android:name=".ui.AddFriendActivity"/>
+        <activity android:name=".ui.ResetPasswordActivity"/>
     </application>
 
 </manifest>

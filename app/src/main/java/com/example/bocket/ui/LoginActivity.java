@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -25,6 +26,7 @@ public class LoginActivity extends AppCompatActivity {
     private ImageButton btnBack;
     private Button btnLogin;
     private EditText etUsername, etPassword;
+    private TextView tvForgotPassword;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -34,7 +36,7 @@ public class LoginActivity extends AppCompatActivity {
         btnLogin = findViewById(R.id.btn_login);
         etUsername = findViewById(R.id.et_username);
         etPassword = findViewById(R.id.et_password);
-
+        tvForgotPassword = findViewById(R.id.tv_forgot_password);
         btnBack.setOnClickListener(v -> finish());
 
         btnLogin.setOnClickListener(v -> {
@@ -47,27 +49,38 @@ public class LoginActivity extends AppCompatActivity {
                 handleLogin(user, pass);
             }
         });
+        // Giả sử bạn đã thêm TextView tvForgotPassword vào XML
+        tvForgotPassword.setOnClickListener(v -> {
+            Intent intent = new Intent(LoginActivity.this, EmailActivity.class);
+            intent.putExtra("mode", "forgot_password"); // Gửi "nhãn" quên mật khẩu
+            startActivity(intent);
+        });
     }
 
     private void handleLogin(String username, String password) {
         LoginRequest loginRequest = new LoginRequest(username, password);
 
         RetrofitClient.getApiService().login(loginRequest).enqueue(new Callback<LoginResponse>() {
+            // Tìm đến hàm handleLogin trong LoginActivity.java
             @Override
             public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    // Thành công: Node.js trả về res.json({ message, user, token })
                     String token = response.body().getToken();
-                    saveToken(token);
 
-                    Toast.makeText(LoginActivity.this, "Chào mừng quay trở lại!", Toast.LENGTH_SHORT).show();
+                    // LẤY USER ID TỪ RESPONSE
+                    // Giả sử server trả về object user chứa UserID
+                    int userId = response.body().getUser().getUserID();
+
+                    // LƯU VÀO SHAREDPREFERENCES
+                    SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
+                    SharedPreferences.Editor editor = sharedPref.edit();
+                    editor.putString("jwt_token", token);
+                    editor.putInt("user_id", userId); // Dòng cực kỳ quan trọng
+                    editor.apply();
 
                     Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                     startActivity(intent);
                     finish();
-                } else {
-                    // Thất bại: 401 Unauthorized
-                    Toast.makeText(LoginActivity.this, "Tài khoản hoặc mật khẩu không đúng", Toast.LENGTH_SHORT).show();
                 }
             }
 
@@ -78,10 +91,11 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    private void saveToken(String token) {
+    private void saveUserData(String token, int userId) {
         SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = sharedPref.edit();
         editor.putString("jwt_token", token);
+        editor.putInt("user_id", userId); // LƯU QUAN TRỌNG Ở ĐÂY
         editor.apply();
     }
 }

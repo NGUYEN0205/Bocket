@@ -92,7 +92,18 @@
         android:textColor="@android:color/white"
         android:textColorHint="#A8A8A8"
         android:inputType="textPassword"
-        android:layout_marginBottom="40dp"/>
+        android:layout_marginBottom="15dp"/>
+    <TextView
+        android:id="@+id/tv_forgot_password"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Quên mật khẩu?"
+        android:textColor="#FFCC4D"
+        android:layout_gravity="center_horizontal"
+
+        android:layout_marginBottom="20dp"
+        android:textSize="14sp"
+        android:padding="8dp"/>
 
     <Button
         android:id="@+id/btn_login"

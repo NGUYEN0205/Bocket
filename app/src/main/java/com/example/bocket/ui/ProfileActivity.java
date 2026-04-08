@@ -38,9 +38,12 @@ public class ProfileActivity extends AppCompatActivity {
 
         initViews();
         setupClickListeners(); // Tách riêng logic click cho sạch code
+    }
+    @Override
+    protected void onResume(){
+        super.onResume();
         loadUserProfileData();
     }
-
     private void initViews() {
         ivProfileAvatar = findViewById(R.id.ivProfileAvatar);
         tvProfileNickname = findViewById(R.id.tvProfileNickname);
@@ -93,7 +96,7 @@ public class ProfileActivity extends AppCompatActivity {
                     } else {
                         tvProfileNickname.setText(username);
                     } // Dùng getter tương ứng của bạn
-                    tvProfileUsername.setText("@" + user.getUsername());
+                    tvProfileUsername.setText("@" + user.getUserID());
 
                     // XỬ LÝ ẢNH AVATAR (BASE64) BẰNG GLIDE
                     String base64Avatar = user.getAvatar();

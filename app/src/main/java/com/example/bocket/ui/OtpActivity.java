@@ -44,26 +44,27 @@ public class OtpActivity extends AppCompatActivity {
         setUpOTPInputs();
 
         btnRegister.setOnClickListener(v -> {
-            String s1 = otp1.getText().toString().trim();
-            String s2 = otp2.getText().toString().trim();
-            String s3 = otp3.getText().toString().trim();
-            String s4 = otp4.getText().toString().trim();
-            String s5 = otp5.getText().toString().trim();
-            String s6 = otp6.getText().toString().trim();
-            if (s1.isEmpty() || s2.isEmpty() || s3.isEmpty() ||
-                    s4.isEmpty() || s5.isEmpty() || s6.isEmpty()) {
+            String fullCode = getOtpFromInputs(); // Hàm phụ để gom 6 ô thành 1 chuỗi
 
-                // Thông báo nếu chưa nhập đủ
-                Toast.makeText(OtpActivity.this, "Vui lòng nhập đủ 6 chữ số mã xác nhận!", Toast.LENGTH_SHORT).show();
-            } else {
-                // 3. Ghép chuỗi để lấy mã OTP hoàn chỉnh
-                String fullCode = s1 + s2 + s3 + s4 + s5 + s6;
-                verifyOtp(email, fullCode);
+            if (fullCode.length() < 6) {
+                Toast.makeText(this, "Vui lòng nhập đủ mã xác thực 6 số", Toast.LENGTH_SHORT).show();
+                return;
             }
+
+            verifyOtp(email, fullCode);
         });
+
         btnBack.setOnClickListener(v -> finish());
     }
-
+    // Hàm hỗ trợ gom mã OTP
+    private String getOtpFromInputs() {
+        return otp1.getText().toString().trim() +
+                otp2.getText().toString().trim() +
+                otp3.getText().toString().trim() +
+                otp4.getText().toString().trim() +
+                otp5.getText().toString().trim() +
+                otp6.getText().toString().trim();
+    }
     private void setUpOTPInputs(){
         otp1.addTextChangedListener(new GenericTextWatcher(otp1, otp2));
         otp2.addTextChangedListener(new GenericTextWatcher(otp2, otp3));
@@ -103,23 +104,20 @@ public class OtpActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 if (response.isSuccessful()) {
-                    // OTP ĐÚNG -> Mới cho chuyển sang đăng ký
-                    Toast.makeText(OtpActivity.this, "Xác thực thành công!", Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent(OtpActivity.this, RegisterActivity.class);
-                    intent.putExtra("email", email);
-                    startActivity(intent);
-                    finish();
-                } else {
-                    // OTP SAI
-                    Toast.makeText(OtpActivity.this, "Mã OTP không chính xác!", Toast.LENGTH_SHORT).show();
-                    try {
-                        // Đọc nội dung lỗi thực sự từ server trả về
-                        String errorBody = response.errorBody().string();
-                        android.util.Log.e("SERVER_ERROR", errorBody);
-                        Toast.makeText(OtpActivity.this, "Server trả về: " + errorBody, Toast.LENGTH_LONG).show();
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    String mode = getIntent().getStringExtra("mode");
+
+                    if ("forgot_password".equals(mode)) {
+                        // ĐIỀU HƯỚING SANG TRANG MẬT KHẨU MỚI
+                        Intent intent = new Intent(OtpActivity.this, ResetPasswordActivity.class);
+                        intent.putExtra("email", email);
+                        startActivity(intent);
+                    } else {
+                        // ĐIỀU HƯỚNG SANG TRANG ĐĂNG KÝ (CŨ)
+                        Intent intent = new Intent(OtpActivity.this, RegisterActivity.class);
+                        intent.putExtra("email", email);
+                        startActivity(intent);
                     }
+                    finish();
                 }
             }
 

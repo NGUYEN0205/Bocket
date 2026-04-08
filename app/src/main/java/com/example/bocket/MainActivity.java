@@ -9,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -105,10 +106,6 @@ public class MainActivity extends AppCompatActivity {
         initViews();
 
 
-        // 3. Tải thông tin người dùng (Avatar)
-        loadUserProfile();
-
-
         // 4. Thiết lập RecyclerView cho Feed
         setupRecyclerView();
 
@@ -161,7 +158,11 @@ public class MainActivity extends AppCompatActivity {
             loadUserPostsOnly(friend.getUserID());
         });
     }
-
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadUserProfile(); // Cập nhật lại avatar mỗi khi quay lại màn hình chính
+    }
 
     private void setupRecyclerView() {
         rvFeed.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
@@ -174,10 +175,16 @@ public class MainActivity extends AppCompatActivity {
         // --- Sự kiện màn hình Camera ---
         ibCapture.setOnClickListener(v -> takePhoto());
         ibSwitchCamera.setOnClickListener(v -> toggleCamera());
-        ibGallery.setOnClickListener(v -> openGallery());
+        // Trong setupClickListeners()
         llHistory.setOnClickListener(v -> {
-            loadPostsFromServer();
-            showFeed();
+            loadPostsFromServer(); // Tải tất cả
+            showFeed();           // Sau đó mới hiện màn hình
+        });
+
+        // Trong initViews(), phần xử lý adapter:
+        friendsAdapter.setOnFriendClickListener(friend -> {
+            hideFriendsList();
+            loadUserPostsOnly(friend.getUserID()); // Tải của 1 người, trong hàm này đã có showFeed() rồi
         });
         ivAvatar.setOnClickListener(v -> {
             Intent intent = new Intent(this, ProfileActivity.class);
@@ -251,26 +258,49 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
         String token = "Bearer " + sharedPref.getString("jwt_token", "");
 
-
         ApiService apiService = RetrofitClient.getApiService();
         apiService.getUserProfile(token).enqueue(new Callback<User>() {
             @Override
             public void onResponse(Call<User> call, Response<User> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    String base64Avatar = response.body().getAvatar();
-                    if (base64Avatar != null && !base64Avatar.isEmpty()) {
-                        byte[] imageBytes = android.util.Base64.decode(base64Avatar, android.util.Base64.DEFAULT);
-                        Glide.with(MainActivity.this)
-                                .asBitmap()
-                                .load(imageBytes)
-                                .placeholder(R.drawable.ic_avatar_placeholder)
-                                .circleCrop()
-                                .into(ivAvatar);
+                    String avatarData = response.body().getAvatar(); // Chuỗi này có thể là URL hoặc Base64
+
+                    if (avatarData != null && !avatarData.isEmpty()) {
+                        // TRƯỜNG HỢP 1: Nếu avatarData là một URL (http...)
+                        if (avatarData.startsWith("http")) {
+                            Glide.with(MainActivity.this)
+                                    .load(avatarData)
+                                    .placeholder(R.drawable.ic_avatar_placeholder)
+                                    .circleCrop()
+                                    .into(ivAvatar);
+                        }
+                        // TRƯỜNG HỢP 2: Nếu avatarData là chuỗi Base64
+                        else {
+                            try {
+                                // Xử lý nếu chuỗi Base64 có chứa header "data:image/..."
+                                if (avatarData.contains(",")) {
+                                    avatarData = avatarData.split(",")[1];
+                                }
+
+                                byte[] imageBytes = android.util.Base64.decode(avatarData, android.util.Base64.DEFAULT);
+                                Glide.with(MainActivity.this)
+                                        .asBitmap()
+                                        .load(imageBytes)
+                                        .placeholder(R.drawable.ic_avatar_placeholder)
+                                        .circleCrop()
+                                        .into(ivAvatar);
+                            } catch (Exception e) {
+                                Log.e("AVATAR_ERROR", "Lỗi decode Base64: " + e.getMessage());
+                            }
+                        }
                     }
                 }
             }
+
             @Override
-            public void onFailure(Call<User> call, Throwable t) { }
+            public void onFailure(Call<User> call, Throwable t) {
+                Log.e("AVATAR_ERROR", "Lỗi kết nối profile: " + t.getMessage());
+            }
         });
     }
 
@@ -279,21 +309,29 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
         String token = "Bearer " + sharedPref.getString("jwt_token", "");
 
-
         ApiService apiService = RetrofitClient.getApiService();
+
+        // Sử dụng đúng kiểu PostResponse nếu server trả về object bọc ngoài
         apiService.getFriendPosts(token).enqueue(new Callback<PostResponse>() {
             @Override
             public void onResponse(Call<PostResponse> call, Response<PostResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     postList.clear();
+                    // Giả sử PostResponse có method getData() trả về List<Post>
                     postList.addAll(response.body().getData());
-                    postAdapter = new PostAdapter(MainActivity.this, postList);
-                    rvFeed.setAdapter(postAdapter);
+
+                    if (postAdapter == null) {
+                        postAdapter = new PostAdapter(MainActivity.this, postList);
+                        rvFeed.setAdapter(postAdapter);
+                    } else {
+                        postAdapter.notifyDataSetChanged();
+                    }
                 }
             }
+
             @Override
             public void onFailure(Call<PostResponse> call, Throwable t) {
-                Toast.makeText(MainActivity.this, "Không thể tải bài viết", Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Lỗi kết nối: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -400,11 +438,13 @@ public class MainActivity extends AppCompatActivity {
         rvFriendsList.setVisibility(View.GONE);
     }
 
-    public void onBackPressed(){
-        if (isFirendsListVisible){
+    @Override
+    public void onBackPressed() {
+        if (isFirendsListVisible) {
             hideFriendsList();
-        }
-        else {
+        } else if (rvFeed.getVisibility() == View.VISIBLE) {
+            hideFeed(); // Nếu đang xem Feed thì quay về Camera trước khi thoát app
+        } else {
             super.onBackPressed();
         }
     }
@@ -445,24 +485,27 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<PostResponse> call, Response<PostResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
+                    // 1. Xóa dữ liệu cũ của feed chung
                     postList.clear();
+
+                    // 2. Thêm dữ liệu của người dùng cụ thể
                     postList.addAll(response.body().getData());
 
-                    // --- ĐOẠN SỬA QUAN TRỌNG ---
+                    // 3. Cập nhật Adapter
                     if (postAdapter == null) {
-                        // Nếu chưa có Adapter thì phải khởi tạo và gắn vào RecyclerView
                         postAdapter = new PostAdapter(MainActivity.this, postList);
                         rvFeed.setAdapter(postAdapter);
                     } else {
-                        // Nếu đã có rồi thì mới báo update
                         postAdapter.notifyDataSetChanged();
                     }
-                    // ---------------------------
 
-                    showFeed(); // Hiện màn hình Feed
+                    // 4. Cuộn lên đầu trang
+                    rvFeed.scrollToPosition(0);
+
+                    // 5. Hiển thị màn hình Feed
+                    showFeed();
                 }
             }
-
             @Override
             public void onFailure(Call<PostResponse> call, Throwable t) {
                 Toast.makeText(MainActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
