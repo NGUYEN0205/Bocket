@@ -75,7 +75,7 @@ public class RegisterActivity extends AppCompatActivity {
         // 2. Cấu hình Retrofit kết nối tới Server Node.js
         // Lưu ý: Dùng 10.0.2.2 nếu chạy máy ảo Android, hoặc IP máy tính nếu chạy máy thật
         Retrofit retrofit = new Retrofit.Builder()
-                .baseUrl("http://192.168.102.11:3000/")
+                .baseUrl("http://192.168.102.8:3000/")
                 .addConverterFactory(GsonConverterFactory.create())
                 .build();
 

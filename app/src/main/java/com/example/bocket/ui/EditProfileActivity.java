@@ -9,6 +9,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Base64;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -74,14 +75,29 @@ public class EditProfileActivity extends AppCompatActivity {
         initViews();
 
         // 3. Load dữ liệu cũ
-        oldName = getIntent().getStringExtra("current_name");
-        oldEmail = getIntent().getStringExtra("current_email");
-        String oldAvatar = getIntent().getStringExtra("current_avatar");
+        oldName = getIntent().getStringExtra("current_DisplayName");
+        oldEmail = getIntent().getStringExtra("current_Email");
+        String oldAvatar = getIntent().getStringExtra("current_Avatar");
+
 
         etName.setText(oldName != null ? oldName : "");
         etEmail.setText(oldEmail != null ? oldEmail : "");
         if (oldAvatar != null && !oldAvatar.isEmpty()) {
-            Glide.with(this).load(oldAvatar).placeholder(R.drawable.ic_avatar_placeholder).into(ivAvatar);
+            //Glide.with(this).load(oldAvatar).placeholder(R.drawable.ic_avatar_placeholder).into(ivAvatar);
+            try {
+                // Giải mã Base64
+                byte[] imageBytes = Base64.decode(oldAvatar, Base64.DEFAULT);
+
+                // Load ảnh bằng Glide và cắt tròn
+                Glide.with(EditProfileActivity.this)
+                        .asBitmap()
+                        .load(imageBytes)
+                        .placeholder(R.drawable.ic_avatar_placeholder)
+                        .circleCrop() // Đảm bảo bo tròn hoàn hảo
+                        .into(ivAvatar);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
 
         // 4. Sự kiện chọn ảnh
@@ -116,19 +132,38 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void performUpdate() {
-        // Cho phép để trống, Server sẽ giữ nguyên giá trị cũ nếu không có thay đổi
+        String nameInput = etName.getText().toString().trim();
+        String emailInput = etEmail.getText().toString().trim();
+
+        // Nếu thay đổi email
+        if (!emailInput.isEmpty() && !emailInput.equals(oldEmail)) {
+            // 1. Gửi OTP về email cũ trước
+            requestOTPForEmailChange(oldEmail, () -> {
+                // 2. Sau khi gửi OTP thành công, hiện Dialog nhập mã
+                showOtpInputDialog(otp -> {
+                    // 3. Thực hiện update kèm mã OTP
+                    sendUpdateToService(nameInput, emailInput, otp);
+                });
+            });
+        } else {
+            // Không đổi email -> Update bình thường (otp = null)
+            sendUpdateToService(nameInput, emailInput, null);
+        }
+    }
+
+    private void sendUpdateToService(String name, String email, String otp) {
         String nameInput = etName.getText().toString().trim();
         String emailInput = etEmail.getText().toString().trim();
 
         // LOGIC: Nếu trống thì lấy lại giá trị cũ, nếu không trống thì lấy giá trị mới
         String finalName = nameInput.isEmpty() ? oldName : nameInput;
         String finalEmail = emailInput.isEmpty() ? oldEmail : emailInput;
-
         String avatarBase64 = null;
         if (selectedBitmap != null) {
             Bitmap smallBitmap = getResizedBitmap(selectedBitmap, 500);
             avatarBase64 = encodeImageToBase64(smallBitmap);
         }
+
 
         SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
         String token = "Bearer " + sharedPref.getString("jwt_token", "");
@@ -137,6 +172,7 @@ public class EditProfileActivity extends AppCompatActivity {
         updateRequest.setDisplay_name(finalName);
         updateRequest.setEmail(finalEmail);
         updateRequest.setAvatar(avatarBase64);
+        updateRequest.setOtp(otp); // Bạn cần thêm field 'otp' vào class User
 
         RetrofitClient.getApiService().updateProfile(token, updateRequest).enqueue(new Callback<ResponseBody>() {
             @Override
@@ -176,5 +212,52 @@ public class EditProfileActivity extends AppCompatActivity {
             width = (int) (height * bitmapRatio);
         }
         return Bitmap.createScaledBitmap(image, width, height, true);
+    }
+
+    private void showOtpInputDialog(OnOtpEntered listener) {
+        EditText etOtp = new EditText(this);
+        etOtp.setHint("Nhập mã OTP gửi tới " + oldEmail);
+
+        new AlertDialog.Builder(this)
+                .setTitle("Xác thực thay đổi Email")
+                .setView(etOtp)
+                .setPositiveButton("Xác nhận", (dialog, which) -> {
+                    listener.onEntered(etOtp.getText().toString().trim());
+                })
+                .setNegativeButton("Hủy", null)
+                .show();
+    }
+
+    interface OnOtpEntered {
+        void onEntered(String otp);
+    }
+    interface OnOtpSentListener {
+        void onSuccess();
+    }
+
+    private void requestOTPForEmailChange(String email, OnOtpSentListener listener) {
+        User userRequest = new User();
+        userRequest.setEmail(email);
+
+        RetrofitClient.getApiService().sendOTP(userRequest).enqueue(new Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                if (response.isSuccessful()) {
+                    Toast.makeText(EditProfileActivity.this, "Mã xác thực đã gửi!", Toast.LENGTH_SHORT).show();
+                    listener.onSuccess();
+                } else {
+                    // In lỗi chi tiết từ server
+                    try {
+                        Log.e("DEBUG_OTP", "Server trả về lỗi: " + response.errorBody().string());
+                    } catch (Exception e) { e.printStackTrace(); }
+                    Toast.makeText(EditProfileActivity.this, "Lỗi 400: Dữ liệu không hợp lệ", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                Log.e("DEBUG_OTP", "Lỗi kết nối: " + t.getMessage());
+            }
+        });
     }
 }

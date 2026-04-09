@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
@@ -30,6 +31,7 @@ public class ProfileActivity extends AppCompatActivity {
     private TextView tvProfileNickname, tvProfileUsername;
     private ImageButton btnBack;
     private View btnOpenSetting, btnOpenEditProfile,btnAddFriend;
+    private User user;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -73,7 +75,12 @@ public class ProfileActivity extends AppCompatActivity {
 
         // Mở chỉnh sửa
         btnOpenEditProfile.setOnClickListener(v -> {
-            startActivity(new Intent(ProfileActivity.this, EditProfileActivity.class));
+            Intent intent = new Intent(ProfileActivity.this, EditProfileActivity.class);
+            intent.putExtra("current_DisplayName", user.getDisplay_name());
+            Log.d("DEBUG_TRANSFER", "Email chuẩn bị gửi đi: " + user.getEmail());
+            intent.putExtra("current_Email", user.getEmail());
+            intent.putExtra("current_Avatar", user.getAvatar());
+            startActivity(intent);
         });
     }
     private void loadUserProfileData() {
@@ -85,10 +92,15 @@ public class ProfileActivity extends AppCompatActivity {
         apiService.getUserProfile(token).enqueue(new Callback<User>() {
             @Override
             public void onResponse(Call<User> call, Response<User> response) {
+                try {
+                    String rawJson = new com.google.gson.Gson().toJson(response.body());
+                } catch (Exception e) { }
+
                 if (response.isSuccessful() && response.body() != null) {
-                    User user = response.body();
+                    user = response.body();
                     String displayName = user.getDisplay_name();
                     String username = user.getUsername();
+
 
                     // HIỂN THỊ DỮ LIỆU LÊN GIAO DIỆN
                     if (displayName != null && !displayName.trim().isEmpty()) {

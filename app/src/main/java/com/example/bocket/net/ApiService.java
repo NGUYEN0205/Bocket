@@ -46,7 +46,7 @@ public interface ApiService {
             @Header("Authorization") String token,
             @Path("userId") int userId
     );
-    @GET("api/auth/profile") // Thay đổi endpoint cho đúng với Node.js của bạn
+    @GET("api/auth/profile")
     Call<User> getUserProfile(@Header("Authorization") String token);
 
     @PUT("api/user/update-profile")
