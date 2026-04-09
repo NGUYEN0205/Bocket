@@ -86,14 +86,14 @@
 
         <ImageButton
             android:id="@+id/ibCancel"
-            android:layout_width="70dp"
-            android:layout_height="71dp"
+            android:layout_width="57dp"
+            android:layout_height="55dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:scaleType="fitCenter"
             android:src="@drawable/x_solid"
             app:layout_constraintBottom_toBottomOf="@+id/ibSend"
             app:layout_constraintEnd_toStartOf="@+id/ibSend"
-            app:layout_constraintHorizontal_bias="0.54"
+            app:layout_constraintHorizontal_bias="0.544"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="@+id/ibSend"
             app:layout_constraintVertical_bias="0.0"

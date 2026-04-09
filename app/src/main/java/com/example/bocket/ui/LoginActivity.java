@@ -25,7 +25,7 @@ import retrofit2.Response;
 public class LoginActivity extends AppCompatActivity {
     private ImageButton btnBack;
     private Button btnLogin;
-    private EditText etUsername, etPassword;
+    private EditText etUsername, etPassword,etEmail;
     private TextView tvForgotPassword;
 
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,16 +37,18 @@ public class LoginActivity extends AppCompatActivity {
         etUsername = findViewById(R.id.et_username);
         etPassword = findViewById(R.id.et_password);
         tvForgotPassword = findViewById(R.id.tv_forgot_password);
+        etEmail = findViewById(R.id.et_email);
         btnBack.setOnClickListener(v -> finish());
 
         btnLogin.setOnClickListener(v -> {
             String user = etUsername.getText().toString().trim();
             String pass = etPassword.getText().toString().trim();
+            String email = etEmail.getText().toString().trim();
 
             if (user.isEmpty() || pass.isEmpty()) {
                 Toast.makeText(this, "Vui lòng nhập đủ thông tin", Toast.LENGTH_SHORT).show();
             } else {
-                handleLogin(user, pass);
+                handleLogin(user, pass,email);
             }
         });
         // Giả sử bạn đã thêm TextView tvForgotPassword vào XML
@@ -57,36 +59,35 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    private void handleLogin(String username, String password) {
-        LoginRequest loginRequest = new LoginRequest(username, password);
+    // Trong LoginActivity.java, hàm handleLogin
+    private void handleLogin(String username, String password, String email) {
+        // Truyền cả 3 tham số vào constructor
+        LoginRequest loginRequest = new LoginRequest(username, password, email);
 
         RetrofitClient.getApiService().login(loginRequest).enqueue(new Callback<LoginResponse>() {
-            // Tìm đến hàm handleLogin trong LoginActivity.java
             @Override
             public void onResponse(Call<LoginResponse> call, Response<LoginResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    String token = response.body().getToken();
+                    // Lưu token và userId như cũ...
+                    saveUserData(response.body().getToken(), response.body().getUser().getUserID());
 
-                    // LẤY USER ID TỪ RESPONSE
-                    // Giả sử server trả về object user chứa UserID
-                    int userId = response.body().getUser().getUserID();
-
-                    // LƯU VÀO SHAREDPREFERENCES
-                    SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
-                    SharedPreferences.Editor editor = sharedPref.edit();
-                    editor.putString("jwt_token", token);
-                    editor.putInt("user_id", userId); // Dòng cực kỳ quan trọng
-                    editor.apply();
-
-                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                    startActivity(intent);
+                    startActivity(new Intent(LoginActivity.this, MainActivity.class));
                     finish();
+                } else {
+                    // Hiển thị lỗi từ Server (Ví dụ: "Tài khoản hoặc Email không chính xác!")
+                    try {
+                        // Đọc nội dung lỗi từ errorBody
+                        String errorMsg = response.errorBody() != null ? response.errorBody().string() : "Lỗi đăng nhập";
+                        Toast.makeText(LoginActivity.this, errorMsg, Toast.LENGTH_SHORT).show();
+                    } catch (Exception e) {
+                        Toast.makeText(LoginActivity.this, "Sai thông tin đăng nhập", Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
 
             @Override
             public void onFailure(Call<LoginResponse> call, Throwable t) {
-                Toast.makeText(LoginActivity.this, "Lỗi: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(LoginActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
             }
         });
     }

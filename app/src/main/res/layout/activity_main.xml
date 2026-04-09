@@ -82,6 +82,21 @@
             app:layout_constraintTop_toTopOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefreshGrid"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/clTopBar"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvGridHistory"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#1E1E1E" />
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/clControlsCamera"
@@ -105,8 +120,8 @@
 
         <ImageButton
             android:id="@+id/ibCapture"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
+            android:layout_width="65dp"
+            android:layout_height="65dp"
             android:background="@drawable/shape_circle_white"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -134,41 +149,45 @@
         android:layout_marginBottom="30dp"
         app:layout_constraintBottom_toBottomOf="parent">
 
-
         <ImageButton
             android:id="@+id/ibGalleryHistory"
-            android:layout_width="70dp"
-            android:layout_height="82dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_gallery_stack"
-            app:layout_constraintBottom_toBottomOf="parent"
+            android:src="@drawable/share"
+            app:layout_constraintBottom_toBottomOf="@+id/ibCaptureBack"
+            app:layout_constraintTop_toTopOf="@+id/ibCaptureBack"
             app:layout_constraintEnd_toStartOf="@+id/ibCaptureBack"
             app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toStartOf="parent"
             app:tint="#A8A8A8" />
 
-
         <ImageButton
             android:id="@+id/ibCaptureBack"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
+            android:layout_width="65dp"
+            android:layout_height="65dp"
             android:background="@drawable/shape_circle_white"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-
         <ImageButton
             android:id="@+id/ibSwitchCameraBack"
-            android:layout_width="69dp"
-            android:layout_height="79dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_switch_camera"
-            app:layout_constraintBottom_toBottomOf="parent"
+            android:src="@drawable/library"
+            app:layout_constraintBottom_toBottomOf="@+id/ibCaptureBack"
+            app:layout_constraintTop_toTopOf="@+id/ibCaptureBack"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintHorizontal_bias="0.5"
             app:layout_constraintStart_toEndOf="@+id/ibCaptureBack"
             app:tint="#A8A8A8" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 
@@ -215,4 +234,5 @@
         app:layout_constraintEnd_toEndOf="@+id/tvFriendCount"
         app:layout_constraintVertical_bias="0.0"
         tools:ignore="NotSibling" />
+
 </androidx.constraintlayout.widget.ConstraintLayout>

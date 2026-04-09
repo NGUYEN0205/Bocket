@@ -152,28 +152,29 @@ public class EditProfileActivity extends AppCompatActivity {
     }
 
     private void sendUpdateToService(String name, String email, String otp) {
-        String nameInput = etName.getText().toString().trim();
-        String emailInput = etEmail.getText().toString().trim();
-
-        // LOGIC: Nếu trống thì lấy lại giá trị cũ, nếu không trống thì lấy giá trị mới
-        String finalName = nameInput.isEmpty() ? oldName : nameInput;
-        String finalEmail = emailInput.isEmpty() ? oldEmail : emailInput;
+        // 1. Xử lý ảnh (Dùng NO_WRAP để chuỗi Base64 liền mạch)
         String avatarBase64 = null;
         if (selectedBitmap != null) {
             Bitmap smallBitmap = getResizedBitmap(selectedBitmap, 500);
-            avatarBase64 = encodeImageToBase64(smallBitmap);
+            // Sửa ở đây: Base64.NO_WRAP
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            smallBitmap.compress(Bitmap.CompressFormat.JPEG, 30, baos);
+            byte[] b = baos.toByteArray();
+            avatarBase64 = Base64.encodeToString(b, Base64.NO_WRAP);
         }
 
-
+        // 2. Lấy Token từ SharedPreferences
         SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
         String token = "Bearer " + sharedPref.getString("jwt_token", "");
 
+        // 3. Tạo Object Update (Sử dụng trực tiếp tham số name, email đã truyền vào)
         User updateRequest = new User();
-        updateRequest.setDisplay_name(finalName);
-        updateRequest.setEmail(finalEmail);
+        updateRequest.setDisplay_name(name.isEmpty() ? oldName : name);
+        updateRequest.setEmail(email.isEmpty() ? oldEmail : email);
         updateRequest.setAvatar(avatarBase64);
-        updateRequest.setOtp(otp); // Bạn cần thêm field 'otp' vào class User
+        updateRequest.setOtp(otp);
 
+        // 4. Gọi API
         RetrofitClient.getApiService().updateProfile(token, updateRequest).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
@@ -182,7 +183,15 @@ public class EditProfileActivity extends AppCompatActivity {
                     setResult(RESULT_OK);
                     finish();
                 } else {
-                    Toast.makeText(EditProfileActivity.this, "Lỗi cập nhật: " + response.code(), Toast.LENGTH_SHORT).show();
+                    // Đọc lỗi chi tiết từ server để biết tại sao sai (ví dụ: Sai OTP)
+                    try {
+                        String errorJson = response.errorBody().string();
+                        // Nếu server trả về dạng { "message": "..." }
+                        org.json.JSONObject jObjError = new org.json.JSONObject(errorJson);
+                        Toast.makeText(EditProfileActivity.this, jObjError.getString("message"), Toast.LENGTH_LONG).show();
+                    } catch (Exception e) {
+                        Toast.makeText(EditProfileActivity.this, "Lỗi: " + response.code(), Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
 
@@ -239,24 +248,32 @@ public class EditProfileActivity extends AppCompatActivity {
         User userRequest = new User();
         userRequest.setEmail(email);
 
-        RetrofitClient.getApiService().sendOTP(userRequest).enqueue(new Callback<ResponseBody>() {
+        // THAY ĐỔI: Gọi sendOtpUpdate thay vì sendOTP
+        RetrofitClient.getApiService().sendOtpUpdate(userRequest).enqueue(new Callback<ResponseBody>() {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 if (response.isSuccessful()) {
                     Toast.makeText(EditProfileActivity.this, "Mã xác thực đã gửi!", Toast.LENGTH_SHORT).show();
                     listener.onSuccess();
                 } else {
-                    // In lỗi chi tiết từ server
                     try {
-                        Log.e("DEBUG_OTP", "Server trả về lỗi: " + response.errorBody().string());
-                    } catch (Exception e) { e.printStackTrace(); }
-                    Toast.makeText(EditProfileActivity.this, "Lỗi 400: Dữ liệu không hợp lệ", Toast.LENGTH_SHORT).show();
+                        // Đọc lỗi chi tiết từ Server để biết tại sao bị 400
+                        String errorBody = response.errorBody().string();
+                        org.json.JSONObject jObj = new org.json.JSONObject(errorBody);
+                        String msg = jObj.optString("message", "Dữ liệu không hợp lệ");
+
+                        Toast.makeText(EditProfileActivity.this, msg, Toast.LENGTH_LONG).show();
+                        Log.e("DEBUG_OTP", "Server Error: " + errorBody);
+                    } catch (Exception e) {
+                        Toast.makeText(EditProfileActivity.this, "Lỗi: " + response.code(), Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
                 Log.e("DEBUG_OTP", "Lỗi kết nối: " + t.getMessage());
+                Toast.makeText(EditProfileActivity.this, "Không thể kết nối Server!", Toast.LENGTH_SHORT).show();
             }
         });
     }

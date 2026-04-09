@@ -41,6 +41,7 @@ dependencies {
     implementation(libs.guava)
 
     implementation(libs.glide)
+    implementation(libs.androidx.swiperefreshlayout)
     annotationProcessor(libs.glide.compiler)
     // CameraX
     implementation(libs.androidx.camera.core)

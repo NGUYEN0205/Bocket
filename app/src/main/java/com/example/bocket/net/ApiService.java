@@ -41,11 +41,7 @@ public interface ApiService {
     Call<PostResponse> getAllPosts(@Header("Authorization") String token);
 
     // Thêm dòng này vào ApiService.java
-    @GET("api/posts/friends/{userId}")
-    Call<List<Post>> getFriendPosts(
-            @Header("Authorization") String token,
-            @Path("userId") int userId
-    );
+
     @GET("api/auth/profile")
     Call<User> getUserProfile(@Header("Authorization") String token);
 
@@ -75,4 +71,7 @@ public interface ApiService {
 
     @POST("api/auth/reset-password") // Đường dẫn khớp với route ở Server
     Call<ResponseBody> resetPassword(@Body User user); // Dùng model User có chứa email và password
+
+    @POST("api/auth/send-otp-update")
+    Call<ResponseBody> sendOtpUpdate(@Body User user);
 }

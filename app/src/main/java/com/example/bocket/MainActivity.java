@@ -29,6 +29,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.PagerSnapHelper;
 import androidx.recyclerview.widget.RecyclerView;
@@ -41,6 +42,7 @@ import com.example.bocket.net.ApiService;
 import com.example.bocket.net.PostResponse;
 import com.example.bocket.net.RetrofitClient;
 import com.example.bocket.ui.FriendsAdapter;
+import com.example.bocket.ui.GridPostAdapter;
 import com.example.bocket.ui.PostAdapter;
 import com.example.bocket.ui.PreviewPostActivity;
 import com.example.bocket.ui.ProfileActivity;
@@ -68,6 +70,7 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout llHistory;
     private ImageButton ibSwitchCamera, ibGallery, ibCapture, ivAvatar;
     private ImageButton ibCaptureBack, ibGalleryHistory, ibSwitchCameraBack;
+    private androidx.swiperefreshlayout.widget.SwipeRefreshLayout swipeRefreshGrid;
 
 
     // --- VIEW FEED (HISTORY) ---
@@ -85,6 +88,8 @@ public class MainActivity extends AppCompatActivity {
     private boolean isFirendsListVisible = false;
     private FriendsAdapter friendsAdapter;
     private List<User> friendsList = new ArrayList<>();
+    private RecyclerView rvGridHistory;
+    private GridPostAdapter gridAdapter;
 
 
     @Override
@@ -151,7 +156,25 @@ public class MainActivity extends AppCompatActivity {
         rvFriendsList.setLayoutManager(new LinearLayoutManager(this));
         friendsAdapter = new FriendsAdapter(this, friendsList);
         rvFriendsList.setAdapter(friendsAdapter);
+        rvGridHistory = findViewById(R.id.rvGridHistory); // PHẢI THÊM DÒNG NÀY
+        swipeRefreshGrid = findViewById(R.id.swipeRefreshGrid);
 
+        // Thiết lập lưới 3 cột
+        if (rvGridHistory != null) {
+            rvGridHistory.setLayoutManager(new GridLayoutManager(this, 3));
+        }
+        // Thiết lập kéo xuống để đóng
+        if (swipeRefreshGrid != null) {
+            // Tùy chỉnh màu vòng xoay (nếu muốn)
+            swipeRefreshGrid.setColorSchemeColors(android.graphics.Color.WHITE);
+            swipeRefreshGrid.setProgressBackgroundColorSchemeColor(android.graphics.Color.TRANSPARENT);
+
+            swipeRefreshGrid.setOnRefreshListener(() -> {
+                // Khi người dùng lướt xuống đủ mạnh
+                swipeRefreshGrid.setRefreshing(false); // Tắt icon loading
+                hideFeed(); // Gọi hàm ẩn feed để quay về camera
+            });
+        }
         friendsAdapter.setOnFriendClickListener(friend -> {
             hideFriendsList();
             // Gọi API lấy bài viết của riêng người này
@@ -194,7 +217,7 @@ public class MainActivity extends AppCompatActivity {
 
         // --- Sự kiện màn hình Lịch sử ---
         ibCaptureBack.setOnClickListener(v -> hideFeed());
-        ibGalleryHistory.setOnClickListener(v -> openGallery());
+        ibGallery.setOnClickListener(v -> openGallery());
         ibSwitchCameraBack.setOnClickListener(v -> toggleCamera());
 
         tvFriendCount.setOnClickListener(v -> {
@@ -204,6 +227,10 @@ public class MainActivity extends AppCompatActivity {
                 hideFriendsList();
             }
 
+        });
+        // Sự kiện khi bấm vào nút Gallery ở màn hình Feed/Lịch sử
+        ibGalleryHistory.setOnClickListener(v -> {
+            showGridHistory();
         });
     }
 
@@ -242,7 +269,7 @@ public class MainActivity extends AppCompatActivity {
     public void hideFeed() {
         rvFeed.setVisibility(View.GONE);
         clControlsHistory.setVisibility(View.GONE);
-
+        if (swipeRefreshGrid != null) swipeRefreshGrid.setVisibility(View.GONE);
 
         clTopBar.setVisibility(View.VISIBLE);
         flCameraContainer.setVisibility(View.VISIBLE);
@@ -440,10 +467,12 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        if (isFirendsListVisible) {
+        if (swipeRefreshGrid != null && swipeRefreshGrid.getVisibility() == View.VISIBLE) {
+            hideFeed();
+        } else if (isFirendsListVisible) {
             hideFriendsList();
         } else if (rvFeed.getVisibility() == View.VISIBLE) {
-            hideFeed(); // Nếu đang xem Feed thì quay về Camera trước khi thoát app
+            hideFeed();
         } else {
             super.onBackPressed();
         }
@@ -509,6 +538,66 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<PostResponse> call, Throwable t) {
                 Toast.makeText(MainActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void showGridHistory() {
+        // 1. Ẩn các thành phần không liên quan
+        flCameraContainer.setVisibility(View.GONE);
+        clControlsCamera.setVisibility(View.GONE);
+        clControlsHistory.setVisibility(View.GONE);
+        llHistory.setVisibility(View.GONE);
+        rvFeed.setVisibility(View.GONE);
+
+        // 2. Hiện Grid
+        rvGridHistory.setVisibility(View.VISIBLE);
+        clTopBar.setVisibility(View.VISIBLE); // Đảm bảo TopBar vẫn hiện
+
+        // 3. Load dữ liệu (Sử dụng lại postList đã có hoặc gọi lại API)
+        if (postList.isEmpty()) {
+            loadPostsForGrid(); // Hàm gọi API tương tự loadPostsFromServer
+        } else {
+            updateGridAdapter();
+        }
+        // HIỆN CẢ CỤM SWIPE REFRESH
+        swipeRefreshGrid.setVisibility(View.VISIBLE);
+        clTopBar.setVisibility(View.VISIBLE);
+
+        if (postList.isEmpty()) {
+            loadPostsForGrid();
+        } else {
+            updateGridAdapter();
+        }
+    }
+
+    private void updateGridAdapter() {
+        gridAdapter = new GridPostAdapter(this, postList, position -> {
+            // Khi bấm vào 1 ô vuông -> Chuyển sang xem Feed tại vị trí đó
+            showFeed();
+            rvFeed.scrollToPosition(position);
+            rvGridHistory.setVisibility(View.GONE);
+        });
+        rvGridHistory.setAdapter(gridAdapter);
+    }
+    private void loadPostsForGrid() {
+        SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
+        String token = "Bearer " + sharedPref.getString("jwt_token", "");
+
+        ApiService apiService = RetrofitClient.getApiService();
+        apiService.getFriendPosts(token).enqueue(new Callback<PostResponse>() {
+            @Override
+            public void onResponse(Call<PostResponse> call, Response<PostResponse> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    postList.clear();
+                    postList.addAll(response.body().getData());
+                    updateGridAdapter();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<PostResponse> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "Không thể tải lịch sử", Toast.LENGTH_SHORT).show();
             }
         });
     }
