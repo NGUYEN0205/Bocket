@@ -1,7 +1,11 @@
 package com.example.bocket.net;
 
+import com.example.bocket.model.ChatPartner;
+import com.example.bocket.model.CommentRequest;
+import com.example.bocket.model.DefaultResponse;
 import com.example.bocket.model.LoginRequest;
 import com.example.bocket.model.LoginResponse;
+import com.example.bocket.model.Message;
 import com.example.bocket.model.Post;
 import com.example.bocket.model.User;
 
@@ -74,4 +78,20 @@ public interface ApiService {
 
     @POST("api/auth/send-otp-update")
     Call<ResponseBody> sendOtpUpdate(@Body User user);
+
+    @POST("api/messages/comment-to-chat") // Đảm bảo đường dẫn này khớp với NodeJS của bạn
+    Call<DefaultResponse> commentToChat(@Header("Authorization") String token, @Body CommentRequest request);
+
+    @GET("api/messages/messages/{friendId}")
+    Call<List<Message>> getChatMessages(
+            @Header("Authorization") String token,
+            @Path("friendId") int friendId
+    );
+    @GET("api/messages/partners")
+    Call<List<ChatPartner>> getChatPartners(@Header("Authorization") String token);
+    @POST("api/messages/send") // Đường dẫn phải khớp với Router trong NodeJS của bạn
+    Call<DefaultResponse> sendMessage(
+            @Header("Authorization") String token,
+            @Body Map<String, Object> body // Chứa receiverId và content
+    );
 }

@@ -44,6 +44,8 @@
         <activity android:name=".ui.EditProfileActivity"/>
         <activity android:name=".ui.AddFriendActivity"/>
         <activity android:name=".ui.ResetPasswordActivity"/>
+        <activity android:name=".ui.ChatPartnerActivity" android:exported="true" />
+        <activity android:name=".ui.ChatActivity" android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>

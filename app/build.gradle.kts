@@ -58,6 +58,7 @@ dependencies {
 
     implementation(libs.circleimageview)
     implementation(libs.de.hdodenhof.circleimageview)
+    implementation ("io.socket:socket.io-client:2.1.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)

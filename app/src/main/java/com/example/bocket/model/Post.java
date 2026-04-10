@@ -6,7 +6,7 @@ import com.google.gson.annotations.SerializedName;
 
 public class Post {
     @SerializedName("PostID")
-    private int postId;
+    private int PostID;
 
 
     @SerializedName("DisplayName") // Viết hoa giống SQL
@@ -27,9 +27,25 @@ public class Post {
 
     @SerializedName("CreatedAt")
     private String createdAt;
+    @SerializedName("UserID")
+    private int userID;
 
 
     // Các hàm Getter tương ứng
+    public int getPostID() {
+        return PostID;
+    }
+
+    public void setPostID(int postID) {
+        this.PostID = postID;
+    }
+    public int getUserID() {
+        return userID;
+    }
+
+    public void setUserID(int userID) {
+        this.userID = userID;
+    }
     public String getDisplayName() { return displayName; }
     public String getCreatedAt() { return createdAt; }
     public String getAvatarURL() { return avatarURL; }

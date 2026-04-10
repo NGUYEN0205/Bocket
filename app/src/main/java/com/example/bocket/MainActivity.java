@@ -90,6 +90,7 @@ public class MainActivity extends AppCompatActivity {
     private List<User> friendsList = new ArrayList<>();
     private RecyclerView rvGridHistory;
     private GridPostAdapter gridAdapter;
+    private ImageButton ibFilter;
 
 
     @Override
@@ -141,6 +142,7 @@ public class MainActivity extends AppCompatActivity {
         ibGallery = findViewById(R.id.ibGallery);
         ibCapture = findViewById(R.id.ibCapture);
         ivAvatar = findViewById(R.id.ivAvatar);
+        ibFilter = findViewById(R.id.ibFilter);
 
 
         // Bộ nút màn hình Lịch sử (Feed)
@@ -232,6 +234,13 @@ public class MainActivity extends AppCompatActivity {
         ibGalleryHistory.setOnClickListener(v -> {
             showGridHistory();
         });
+
+        if (ibFilter != null) {
+            ibFilter.setOnClickListener(v -> {
+                Intent intent = new Intent(MainActivity.this, com.example.bocket.ui.ChatPartnerActivity.class);
+                startActivity(intent);
+            });
+        }
     }
 
 
@@ -290,43 +299,28 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<User> call, Response<User> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    String avatarData = response.body().getAvatar(); // Chuỗi này có thể là URL hoặc Base64
+                    // --- BƯỚC QUAN TRỌNG: Lưu userId của chính mình vào SharedPreferences ---
+                    int myId = response.body().getUserID();
+                    sharedPref.edit().putInt("user_id", myId).apply();
 
+                    String avatarData = response.body().getAvatar();
+                    // ... (Phần code Glide giữ nguyên như cũ) ...
                     if (avatarData != null && !avatarData.isEmpty()) {
-                        // TRƯỜNG HỢP 1: Nếu avatarData là một URL (http...)
                         if (avatarData.startsWith("http")) {
-                            Glide.with(MainActivity.this)
-                                    .load(avatarData)
-                                    .placeholder(R.drawable.ic_avatar_placeholder)
-                                    .circleCrop()
-                                    .into(ivAvatar);
-                        }
-                        // TRƯỜNG HỢP 2: Nếu avatarData là chuỗi Base64
-                        else {
+                            Glide.with(MainActivity.this).load(avatarData).circleCrop().into(ivAvatar);
+                        } else {
                             try {
-                                // Xử lý nếu chuỗi Base64 có chứa header "data:image/..."
-                                if (avatarData.contains(",")) {
-                                    avatarData = avatarData.split(",")[1];
-                                }
-
+                                if (avatarData.contains(",")) avatarData = avatarData.split(",")[1];
                                 byte[] imageBytes = android.util.Base64.decode(avatarData, android.util.Base64.DEFAULT);
-                                Glide.with(MainActivity.this)
-                                        .asBitmap()
-                                        .load(imageBytes)
-                                        .placeholder(R.drawable.ic_avatar_placeholder)
-                                        .circleCrop()
-                                        .into(ivAvatar);
-                            } catch (Exception e) {
-                                Log.e("AVATAR_ERROR", "Lỗi decode Base64: " + e.getMessage());
-                            }
+                                Glide.with(MainActivity.this).asBitmap().load(imageBytes).circleCrop().into(ivAvatar);
+                            } catch (Exception e) { e.printStackTrace(); }
                         }
                     }
                 }
             }
-
             @Override
             public void onFailure(Call<User> call, Throwable t) {
-                Log.e("AVATAR_ERROR", "Lỗi kết nối profile: " + t.getMessage());
+                Log.e("AVATAR_ERROR", "Lỗi: " + t.getMessage());
             }
         });
     }
@@ -336,19 +330,20 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
         String token = "Bearer " + sharedPref.getString("jwt_token", "");
 
-        ApiService apiService = RetrofitClient.getApiService();
+        // Lấy ID của mình đã lưu từ bước trên, mặc định là -1 nếu chưa có
+        int myId = sharedPref.getInt("user_id", -1);
 
-        // Sử dụng đúng kiểu PostResponse nếu server trả về object bọc ngoài
+        ApiService apiService = RetrofitClient.getApiService();
         apiService.getFriendPosts(token).enqueue(new Callback<PostResponse>() {
             @Override
             public void onResponse(Call<PostResponse> call, Response<PostResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
                     postList.clear();
-                    // Giả sử PostResponse có method getData() trả về List<Post>
                     postList.addAll(response.body().getData());
 
                     if (postAdapter == null) {
-                        postAdapter = new PostAdapter(MainActivity.this, postList);
+                        // --- TRUYỀN THÊM myId VÀO ĐÂY ---
+                        postAdapter = new PostAdapter(MainActivity.this, postList, myId);
                         rvFeed.setAdapter(postAdapter);
                     } else {
                         postAdapter.notifyDataSetChanged();
@@ -508,30 +503,23 @@ public class MainActivity extends AppCompatActivity {
     private void loadUserPostsOnly(int targetUserId) {
         SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
         String token = "Bearer " + sharedPref.getString("jwt_token", "");
+        int myId = sharedPref.getInt("user_id", -1);
 
         ApiService apiService = RetrofitClient.getApiService();
         apiService.getPostsByUser(token, targetUserId).enqueue(new Callback<PostResponse>() {
             @Override
             public void onResponse(Call<PostResponse> call, Response<PostResponse> response) {
                 if (response.isSuccessful() && response.body() != null) {
-                    // 1. Xóa dữ liệu cũ của feed chung
                     postList.clear();
-
-                    // 2. Thêm dữ liệu của người dùng cụ thể
                     postList.addAll(response.body().getData());
 
-                    // 3. Cập nhật Adapter
                     if (postAdapter == null) {
-                        postAdapter = new PostAdapter(MainActivity.this, postList);
+                        postAdapter = new PostAdapter(MainActivity.this, postList, myId);
                         rvFeed.setAdapter(postAdapter);
                     } else {
                         postAdapter.notifyDataSetChanged();
                     }
-
-                    // 4. Cuộn lên đầu trang
                     rvFeed.scrollToPosition(0);
-
-                    // 5. Hiển thị màn hình Feed
                     showFeed();
                 }
             }
