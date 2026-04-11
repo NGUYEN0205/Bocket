@@ -69,10 +69,15 @@ public class PostAdapter extends RecyclerView.Adapter<PostAdapter.PostViewHolder
 
         // 4. Load ảnh bài đăng (Lưu ý: Nếu link ảnh cũng là đường dẫn tương đối, hãy thêm RetrofitClient.BASE_URL vào đây)
         String postImageUrl = post.getImageURL();
-        if (postImageUrl != null && !postImageUrl.startsWith("http")) {
-            postImageUrl = RetrofitClient.BASE_URL + postImageUrl;
+        if (postImageUrl != null) {
+            if (!postImageUrl.startsWith("http")) {
+                postImageUrl = RetrofitClient.BASE_URL + postImageUrl;
+            }
         }
-        Glide.with(context).load(postImageUrl).into(holder.ivPostImage);
+        Glide.with(context)
+                .load(postImageUrl)
+                .placeholder(R.drawable.ic_avatar_placeholder)
+                .into(holder.ivPostImage);
 
         holder.btnSend.setOnClickListener(v -> {
             performSendMessage(holder, post);
