@@ -141,6 +141,29 @@
                 android:textColor="#FFFFFF"
                 android:textSize="18sp" />
         </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvFriendsTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Bạn bè"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="#ffffff"
+            android:layout_marginTop="20dp"
+            android:layout_marginStart="16dp"
+            android:alpha="1.0"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvProfileFriendsList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:nestedScrollingEnabled="false"/>
     </LinearLayout>
+
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -17,6 +17,7 @@ import okhttp3.RequestBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.Header;
 import retrofit2.http.Multipart;
@@ -94,4 +95,7 @@ public interface ApiService {
             @Header("Authorization") String token,
             @Body Map<String, Object> body // Chứa receiverId và content
     );
+    @DELETE("api/posts/{postId}") Call<Void> deletePost(
+            @Header("Authorization") String token,
+            @Path("id") int postId);
 }

@@ -91,6 +91,7 @@ public class MainActivity extends AppCompatActivity {
     private RecyclerView rvGridHistory;
     private GridPostAdapter gridAdapter;
     private ImageButton ibFilter;
+    private int currentFeedPosition = 0;
 
 
     @Override
@@ -193,6 +194,22 @@ public class MainActivity extends AppCompatActivity {
         rvFeed.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false));
         PagerSnapHelper snapHelper = new PagerSnapHelper();
         snapHelper.attachToRecyclerView(rvFeed);
+
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false);
+
+        // Gán nó vào RecyclerView
+        rvFeed.setLayoutManager(layoutManager);
+
+        // Bây giờ bên trong này sẽ không còn bị báo đỏ nữa
+        rvFeed.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+
+                // layoutManager lúc này đã tồn tại nên sử dụng được
+                currentFeedPosition = layoutManager.findFirstVisibleItemPosition();
+            }
+        });
     }
 
 
@@ -220,7 +237,15 @@ public class MainActivity extends AppCompatActivity {
         // --- Sự kiện màn hình Lịch sử ---
         ibCaptureBack.setOnClickListener(v -> hideFeed());
         ibGallery.setOnClickListener(v -> openGallery());
-        ibSwitchCameraBack.setOnClickListener(v -> toggleCamera());
+        ibSwitchCameraBack.setOnClickListener(v -> {
+            LinearLayoutManager lm = (LinearLayoutManager) rvFeed.getLayoutManager();
+            if (lm != null) {
+                int position = lm.findFirstVisibleItemPosition(); // Lấy vị trí ngay tại lúc bấm nút
+                if (position != RecyclerView.NO_POSITION && !postList.isEmpty()) {
+                    showBottomMenu(postList.get(position), position);
+                }
+            }
+        });
 
         tvFriendCount.setOnClickListener(v -> {
             if (!isFirendsListVisible){
@@ -477,6 +502,8 @@ public class MainActivity extends AppCompatActivity {
         SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
         String token = "Bearer " + sharedPref.getString("jwt_token", "");
 
+        int myID = sharedPref.getInt("user_id", -1);
+
         ApiService apiService = RetrofitClient.getApiService();
         apiService.getFriendsList(token).enqueue(new Callback<List<User>>() {
             @Override
@@ -484,7 +511,13 @@ public class MainActivity extends AppCompatActivity {
                 // Trong hàm loadFriendsFromServer()
                 if (response.isSuccessful() && response.body() != null) {
                     friendsList.clear();
-                    friendsList.addAll(response.body());
+
+                    for(User u : response.body()){
+                        if(u.getUserID() != myID){
+                            friendsList.add(u);
+                        }
+                    }
+
                     friendsAdapter.notifyDataSetChanged();
 
                     // Log kiểm tra số lượng thực tế
@@ -586,6 +619,120 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<PostResponse> call, Throwable t) {
                 Toast.makeText(MainActivity.this, "Không thể tải lịch sử", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void showBottomMenu(Post post, int position) {
+        com.google.android.material.bottomsheet.BottomSheetDialog bottomSheetDialog =
+                new com.google.android.material.bottomsheet.BottomSheetDialog(this);
+
+        View view = getLayoutInflater().inflate(R.layout.layout_post_options, null);
+        bottomSheetDialog.setContentView(view);
+
+        LinearLayout llShare = view.findViewById(R.id.llShare);
+        LinearLayout llDelete = view.findViewById(R.id.llDelete);
+
+        // 1. Lấy ID của chính mình từ SharedPreferences
+        SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
+        int myUserId = sharedPref.getInt("user_id", -1);
+
+        // 2. Lấy ID của người đăng từ đối tượng post
+        int postOwnerId = post.getUserID();
+
+        // 3. Log để kiểm tra (Xem trong Logcat)
+        android.util.Log.d("BOCKET_DEBUG", "Của tôi: " + myUserId + " | Của bài đăng: " + postOwnerId);
+
+        // 4. So sánh để hiện nút Xóa
+        if (myUserId != -1 && myUserId == postOwnerId) {
+            llDelete.setVisibility(View.VISIBLE);
+        } else {
+            llDelete.setVisibility(View.GONE);
+        }
+
+        llShare.setOnClickListener(v -> {
+            sharePost(post);
+            bottomSheetDialog.dismiss();
+        });
+
+        llDelete.setOnClickListener(v -> {
+            confirmDelete(post, position);
+            bottomSheetDialog.dismiss();
+        });
+
+        bottomSheetDialog.show();
+    }
+
+
+    private void sharePost(Post post) {
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("text/plain");
+        intent.putExtra(Intent.EXTRA_TEXT, "Xem ảnh của tôi trên Bocket: " + post.getImageURL());
+        startActivity(Intent.createChooser(intent, "Chia sẻ qua"));
+    }
+
+    private void confirmDelete(Post post, int position) {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Xác nhận xóa")
+                .setMessage("Bạn có chắc chắn muốn xóa bài viết này?")
+                .setPositiveButton("Xóa", (d, w) -> {
+                    deletePost(post.getPostID(), position);
+                })
+                .setNegativeButton("Hủy", null)
+                .show();
+    }
+
+
+    private void deletePost(int postId, int position) {
+        String token = "Bearer " + getSharedPreferences("BocketPrefs", MODE_PRIVATE).getString("jwt_token", "");
+
+        RetrofitClient.getApiService().deletePost(token, postId).enqueue(new Callback<Void>() {
+
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+
+                Log.d("DELETE_DEBUG", "Response code: " + response.code());
+
+                if (response.isSuccessful()) {
+                    // 1. Tìm vị trí chính xác của bài viết trong list hiện tại
+                    int actualPosition = -1;
+                    for (int i = 0; i < postList.size(); i++) {
+                        if (postList.get(i).getPostID() == postId) {
+                            actualPosition = i;
+                            break;
+                        }
+                    }
+
+                    if (actualPosition != -1) {
+                        final int finalPos = actualPosition;
+
+                        // Xóa dữ liệu khỏi list trước
+                        postList.remove(finalPos);
+
+                        runOnUiThread(() -> {
+                            if (postAdapter != null) {
+                                postAdapter.notifyDataSetChanged();
+                            }
+
+                            if (gridAdapter != null) {
+                                gridAdapter.notifyDataSetChanged();
+                            }
+
+                            if (postList.isEmpty()) {
+                                hideFeed();
+                            }
+                        });
+
+                        Toast.makeText(MainActivity.this, "Đã xóa bài viết", Toast.LENGTH_SHORT).show();
+                    }
+                } else {
+                    Toast.makeText(MainActivity.this, "Không có quyền xóa", Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
             }
         });
     }

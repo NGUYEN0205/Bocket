@@ -13,12 +13,17 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.bocket.R;
 import com.example.bocket.model.User;
 import com.example.bocket.net.ApiService;
 import com.example.bocket.net.RetrofitClient;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import de.hdodenhof.circleimageview.CircleImageView;
 import retrofit2.Call;
@@ -32,6 +37,10 @@ public class ProfileActivity extends AppCompatActivity {
     private ImageButton btnBack;
     private View btnOpenSetting, btnOpenEditProfile,btnAddFriend;
     private User user;
+    private RecyclerView rvFriends;
+    private FriendsAdapter friendsAdapter;
+    private List<User> friendsList = new ArrayList<>();
+    private TextView tvFriendsTitle;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,12 +48,13 @@ public class ProfileActivity extends AppCompatActivity {
         setContentView(R.layout.activity_profile);
 
         initViews();
-        setupClickListeners(); // Tách riêng logic click cho sạch code
+        setupClickListeners();
     }
     @Override
     protected void onResume(){
         super.onResume();
         loadUserProfileData();
+        loadFriendsData();
     }
     private void initViews() {
         ivProfileAvatar = findViewById(R.id.ivProfileAvatar);
@@ -56,6 +66,15 @@ public class ProfileActivity extends AppCompatActivity {
         btnOpenSetting = findViewById(R.id.btn_open_settings);
         btnOpenEditProfile = findViewById(R.id.btn_open_edit_profile);
         btnAddFriend = findViewById(R.id.btnAddFriendAction);
+
+        rvFriends = findViewById(R.id.rvProfileFriendsList);
+
+        // Thiết lập RecyclerView (Dạng danh sách dọc hoặc ngang tùy bạn)
+        rvFriends.setLayoutManager(new LinearLayoutManager(this));
+        friendsAdapter = new FriendsAdapter(this, friendsList);
+        rvFriends.setAdapter(friendsAdapter);
+
+        tvFriendsTitle = findViewById(R.id.tvFriendsTitle);
     }
     private void setupClickListeners() {
         btnBack.setOnClickListener(v -> finish());
@@ -145,6 +164,40 @@ public class ProfileActivity extends AppCompatActivity {
             @Override
             public void onFailure(Call<User> call, Throwable t) {
                 Toast.makeText(ProfileActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+    private void loadFriendsData() {
+        SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
+        String token = "Bearer " + sharedPref.getString("jwt_token", "");
+        int myID = sharedPref.getInt("user_id", -1);
+
+        ApiService apiService = RetrofitClient.getApiService();
+        apiService.getFriendsList(token).enqueue(new Callback<List<User>>() {
+            @Override
+            public void onResponse(Call<List<User>> call, Response<List<User>> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    friendsList.clear();
+                    // Lọc bỏ chính mình nếu API trả về cả bản thân
+                    for (User u : response.body()) {
+                        if (u.getUserID() != myID) {
+                            friendsList.add(u);
+                        }
+                    }
+                    friendsAdapter.notifyDataSetChanged();
+
+                    if (tvFriendsTitle != null) {
+                        tvFriendsTitle.setText("Bạn bè (" + friendsList.size() + ")");
+                    }
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<User>> call, Throwable t) {
+                Log.e("PROFILE_FRIENDS", "Lỗi: " + t.getMessage());
+                if (tvFriendsTitle != null) {
+                    tvFriendsTitle.setText("Bạn bè (0)");
+                }
             }
         });
     }
