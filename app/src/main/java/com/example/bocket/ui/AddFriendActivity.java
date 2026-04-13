@@ -102,7 +102,9 @@ public class AddFriendActivity extends AppCompatActivity {
                     }
 
                     // isReceivedType = false vì đây là lời mời mình gửi đi
-                    FriendRequestAdapter sentAdapter = new FriendRequestAdapter(list, false, null);
+                    FriendRequestAdapter sentAdapter = new FriendRequestAdapter(list, false, userId -> {
+                        cancelFriendRequest(userId);
+                    });
                     rvSent.setAdapter(sentAdapter);
                 }
             }
@@ -239,6 +241,25 @@ public class AddFriendActivity extends AppCompatActivity {
                 }
             }
             @Override public void onFailure(Call<Void> call, Throwable t) {}
+        });
+    }
+
+    private void cancelFriendRequest(int friendId) {
+        Map<String, Integer> body = new HashMap<>();
+        body.put("friendId", friendId);
+
+        RetrofitClient.getApiService().cancelFriendRequest(getAuthToken(), body).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Toast.makeText(AddFriendActivity.this, "Đã hủy lời mời", Toast.LENGTH_SHORT).show();
+                    loadAllRequests(); // Tải lại danh sách
+                }
+            }
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Toast.makeText(AddFriendActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 

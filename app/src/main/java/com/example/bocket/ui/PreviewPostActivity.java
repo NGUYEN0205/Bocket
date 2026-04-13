@@ -70,60 +70,70 @@ public class PreviewPostActivity extends AppCompatActivity {
     // --- COPY HÀM UPLOAD TỪ MAINACTIVITY SANG ĐÂY VÀ CHỈNH SỬA MỘT CHÚT ---
     private void uploadPost(Uri uri, String captionText) {
         try {
-            File file;
-            if (uri.getScheme().equals("content")) {
-                file = new File(getRealPathFromURI(uri));
-            } else {
-                file = new File(uri.getPath());
+            // Bước 1: Chuyển Uri thành File bằng cách copy vào Cache
+            // Cách này khắc phục triệt để lỗi "RealPath" trên Android 11+
+            File file = getFileFromUri(uri);
+            if (file == null) {
+                Toast.makeText(this, "Không thể xử lý tệp tin!", Toast.LENGTH_SHORT).show();
+                return;
             }
 
-            // 1. Chuẩn bị File ảnh (vẫn là field "image" như cũ)
+            // Bước 2: Chuẩn bị RequestBody cho File
             RequestBody requestFile = RequestBody.create(MediaType.parse("image/*"), file);
             MultipartBody.Part body = MultipartBody.Part.createFormData("image", file.getName(), requestFile);
 
-            // 2. QUAN TRỌNG: Chuẩn bị nội dung chữ (Content)
-            // Server của bạn đang đợi req.body.content, nên ta tạo RequestBody ở đây
-            RequestBody contentPart = RequestBody.create(MediaType.parse("text/plain"), captionText);
+            // Bước 3: Chuẩn bị nội dung chữ (Content)
+            RequestBody contentPart = RequestBody.create(MediaType.parse("multipart/form-data"), captionText);
 
-            // 3. Lấy Token
+            // Bước 4: Lấy Token
             SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
             String token = "Bearer " + sharedPref.getString("jwt_token", "");
 
-            // 4. Gọi API
+            // Bước 5: Gọi API
             ApiService apiService = RetrofitClient.getApiService();
-            // Truyền cả file ảnh và nội dung chữ vào
             apiService.uploadPost(token, body, contentPart).enqueue(new Callback<ResponseBody>() {
                 @Override
                 public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                     if (response.isSuccessful()) {
                         Toast.makeText(PreviewPostActivity.this, "Đăng bài thành công!", Toast.LENGTH_SHORT).show();
-                        finish(); // Đóng màn hình preview
+                        // Trở về MainActivity và báo thành công
+                        finish();
                     } else {
-                        // Nếu lỗi, in mã lỗi để kiểm tra (ví dụ 400, 500)
-                        Toast.makeText(PreviewPostActivity.this, "Lỗi server: " + response.code(), Toast.LENGTH_SHORT).show();
+                        Toast.makeText(PreviewPostActivity.this, "Lỗi: " + response.code(), Toast.LENGTH_SHORT).show();
                     }
                 }
 
                 @Override
                 public void onFailure(Call<ResponseBody> call, Throwable t) {
                     Toast.makeText(PreviewPostActivity.this, "Kết nối thất bại: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+                    android.util.Log.e("UPLOAD_ERR", t.getMessage());
                 }
             });
 
         } catch (Exception e) {
             e.printStackTrace();
+            Toast.makeText(this, "Lỗi hệ thống: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
     // Cần hàm này nếu ảnh chọn từ Gallery được truyền sang đây
-    private String getRealPathFromURI(Uri contentUri) {
-        String[] proj = {MediaStore.Images.Media.DATA};
-        CursorLoader loader = new CursorLoader(this, contentUri, proj, null, null, null);
-        Cursor cursor = loader.loadInBackground();
-        int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-        cursor.moveToFirst();
-        String result = cursor.getString(column_index);
-        cursor.close();
-        return result;
+    private File getFileFromUri(Uri uri) {
+        try {
+            java.io.InputStream inputStream = getContentResolver().openInputStream(uri);
+            // Tạo một file tạm trong thư mục Cache của App
+            File file = new File(getCacheDir(), "temp_upload_" + System.currentTimeMillis() + ".jpg");
+            java.io.FileOutputStream outputStream = new java.io.FileOutputStream(file);
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = inputStream.read(buffer)) > 0) {
+                outputStream.write(buffer, 0, length);
+            }
+            outputStream.close();
+            inputStream.close();
+            return file;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }

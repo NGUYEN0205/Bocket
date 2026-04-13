@@ -63,6 +63,13 @@ public interface ApiService {
 
     @POST("api/friends/accept")
     Call<Void> acceptFriend(@Header("Authorization") String token, @Body Map<String, Integer> body);
+
+    // Thêm vào trong interface ApiService
+    @POST("api/friends/cancel")
+    Call<Void> cancelFriendRequest(
+            @Header("Authorization") String token,
+            @Body Map<String, Integer> body
+    );
     @GET("api/friends/pending")
     Call<List<User>> getPendingRequests(@Header("Authorization") String token);
     @GET("api/friends/sent")
