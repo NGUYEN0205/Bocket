@@ -118,7 +118,11 @@ public class MainActivity extends AppCompatActivity {
 
         // 4. Thiết lập RecyclerView cho Feed
         setupRecyclerView();
-
+        if (getIntent() != null && getIntent().hasExtra("post_id")) {
+            // Nếu có ID bài post truyền từ Widget, thực hiện load dữ liệu và hiện Feed ngay
+            loadPostsFromServer();
+            showFeed();
+        }
 
         // 5. Kiểm tra quyền và chạy Camera
         if (allPermissionsGranted()) {
@@ -739,14 +743,15 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+    // Tìm đến hàm updateWidget() ở cuối MainActivity.java
     private void updateWidget() {
-        Intent intent = new Intent(this, BocketWidgetProvider.class);
-        intent.setAction(android.appwidget.AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+        Intent intent = new Intent(this, com.example.bocket.ui.BocketWidgetProvider.class); // Thêm .ui vào đây
+        intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
 
-        int[] ids = android.appwidget.AppWidgetManager.getInstance(getApplication())
-                .getAppWidgetIds(new android.content.ComponentName(getApplication(), BocketWidgetProvider.class));
+        int[] ids = AppWidgetManager.getInstance(getApplication())
+                .getAppWidgetIds(new ComponentName(getApplication(), com.example.bocket.ui.BocketWidgetProvider.class)); // Và ở đây nữa
 
-        intent.putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
+        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
         sendBroadcast(intent);
     }
 }
