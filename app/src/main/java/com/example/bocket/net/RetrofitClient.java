@@ -6,7 +6,7 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class RetrofitClient {
     // Thay bằng IP máy tính của bạn nếu chạy máy ảo Android (thường là 10.0.2.2)
     // Hoặc IP cục bộ nếu chạy máy thật (VD: 192.168.1.x)
-    public static final String BASE_URL = "http://192.168.1.15:3000/";
+    public static final String BASE_URL = "http://192.168.102.11:3000/";
     private static RetrofitClient mInstance;
     private static Retrofit retrofit = null;
 

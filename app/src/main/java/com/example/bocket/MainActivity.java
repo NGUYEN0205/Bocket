@@ -687,52 +687,51 @@ public class MainActivity extends AppCompatActivity {
         String token = "Bearer " + getSharedPreferences("BocketPrefs", MODE_PRIVATE).getString("jwt_token", "");
 
         RetrofitClient.getApiService().deletePost(token, postId).enqueue(new Callback<Void>() {
-
             @Override
             public void onResponse(Call<Void> call, Response<Void> response) {
-
-                Log.d("DELETE_DEBUG", "Response code: " + response.code());
-
                 if (response.isSuccessful()) {
-                    // 1. Tìm vị trí chính xác của bài viết trong list hiện tại
-                    int actualPosition = -1;
+                    // Tìm vị trí bài viết trong List dựa trên ID (an toàn hơn dựa vào position truyền vào)
+                    int indexToRemove = -1;
                     for (int i = 0; i < postList.size(); i++) {
                         if (postList.get(i).getPostID() == postId) {
-                            actualPosition = i;
+                            indexToRemove = i;
                             break;
                         }
                     }
 
-                    if (actualPosition != -1) {
-                        final int finalPos = actualPosition;
+                    if (indexToRemove != -1) {
+                        // 1. Xóa khỏi danh sách dữ liệu
+                        postList.remove(indexToRemove);
 
-                        // Xóa dữ liệu khỏi list trước
-                        postList.remove(finalPos);
+                        // 2. Cập nhật các Adapter hiện có
+                        if (postAdapter != null) {
+                            postAdapter.notifyItemRemoved(indexToRemove);
+                            // Cập nhật lại dải vị trí phía sau để tránh lỗi index
+                            postAdapter.notifyItemRangeChanged(indexToRemove, postList.size());
+                        }
 
-                        runOnUiThread(() -> {
-                            if (postAdapter != null) {
-                                postAdapter.notifyDataSetChanged();
-                            }
+                        if (gridAdapter != null) {
+                            gridAdapter.notifyDataSetChanged();
+                        }
 
-                            if (gridAdapter != null) {
-                                gridAdapter.notifyDataSetChanged();
-                            }
+                        // 3. Nếu xóa hết bài thì quay về màn hình Camera
+                        if (postList.isEmpty()) {
+                            hideFeed();
+                        }
 
-                            if (postList.isEmpty()) {
-                                hideFeed();
-                            }
-                        });
-
-                        Toast.makeText(MainActivity.this, "Đã xóa bài viết", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(MainActivity.this, "Xóa bài viết thành công!", Toast.LENGTH_SHORT).show();
                     }
+                } else if (response.code() == 403) {
+                    Toast.makeText(MainActivity.this, "Bạn không có quyền xóa bài này", Toast.LENGTH_SHORT).show();
                 } else {
-                    Toast.makeText(MainActivity.this, "Không có quyền xóa", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "Lỗi server: " + response.code(), Toast.LENGTH_SHORT).show();
                 }
             }
 
             @Override
             public void onFailure(Call<Void> call, Throwable t) {
-                Toast.makeText(MainActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
+                Log.e("DELETE_POST", "Error: " + t.getMessage());
+                Toast.makeText(MainActivity.this, "Lỗi kết nối mạng", Toast.LENGTH_SHORT).show();
             }
         });
     }

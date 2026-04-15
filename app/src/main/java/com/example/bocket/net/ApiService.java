@@ -102,7 +102,14 @@ public interface ApiService {
             @Header("Authorization") String token,
             @Body Map<String, Object> body // Chứa receiverId và content
     );
-    @DELETE("api/posts/{postId}") Call<Void> deletePost(
+    @POST("api/friends/unfriend")
+    Call<Void> unfriendOrCancelRequest(
             @Header("Authorization") String token,
-            @Path("id") int postId);
+            @Body Map<String, Integer> body
+    );
+    @DELETE("api/posts/delete/{postId}")
+    Call<Void> deletePost(
+            @Header("Authorization") String token,
+            @Path("postId") int postId
+    );
 }

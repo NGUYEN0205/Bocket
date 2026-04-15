@@ -72,6 +72,10 @@ public class ProfileActivity extends AppCompatActivity {
         // Thiết lập RecyclerView (Dạng danh sách dọc hoặc ngang tùy bạn)
         rvFriends.setLayoutManager(new LinearLayoutManager(this));
         friendsAdapter = new FriendsAdapter(this, friendsList);
+        friendsAdapter.setOnFriendClickListener(friend -> {
+            // Gọi hàm hiện Dialog xác nhận hủy kết bạn
+            showUnfriendDialog(friend);
+        });
         rvFriends.setAdapter(friendsAdapter);
 
         tvFriendsTitle = findViewById(R.id.tvFriendsTitle);
@@ -198,6 +202,44 @@ public class ProfileActivity extends AppCompatActivity {
                 if (tvFriendsTitle != null) {
                     tvFriendsTitle.setText("Bạn bè (0)");
                 }
+            }
+        });
+    }
+    private void showUnfriendDialog(User friend) {
+        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
+        builder.setTitle("Hủy kết bạn");
+        builder.setMessage("Bạn có chắc chắn muốn hủy kết bạn với " + friend.getDisplay_name() + "?");
+
+        builder.setPositiveButton("Hủy kết bạn", (dialog, which) -> {
+            unfriend(friend.getUserID());
+        });
+
+        builder.setNegativeButton("Đóng", (dialog, which) -> dialog.dismiss());
+
+        androidx.appcompat.app.AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+    private void unfriend(int friendId) {
+        SharedPreferences sharedPref = getSharedPreferences("BocketPrefs", Context.MODE_PRIVATE);
+        String token = "Bearer " + sharedPref.getString("jwt_token", "");
+
+        java.util.Map<String, Integer> body = new java.util.HashMap<>();
+        body.put("friendId", friendId);
+
+        RetrofitClient.getApiService().unfriendOrCancelRequest(token, body).enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response) {
+                if (response.isSuccessful()) {
+                    Toast.makeText(ProfileActivity.this, "Đã hủy kết bạn", Toast.LENGTH_SHORT).show();
+                    loadFriendsData(); // Tải lại danh sách để cập nhật UI
+                } else {
+                    Toast.makeText(ProfileActivity.this, "Lỗi: " + response.code(), Toast.LENGTH_SHORT).show();
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Toast.makeText(ProfileActivity.this, "Lỗi kết nối", Toast.LENGTH_SHORT).show();
             }
         });
     }
