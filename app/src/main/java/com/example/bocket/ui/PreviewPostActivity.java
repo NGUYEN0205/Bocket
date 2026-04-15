@@ -1,6 +1,7 @@
 package com.example.bocket.ui;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
@@ -27,6 +28,9 @@ import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
+import com.example.bocket.ui.BocketWidgetProvider;
 
 public class PreviewPostActivity extends AppCompatActivity {
 
@@ -96,7 +100,11 @@ public class PreviewPostActivity extends AppCompatActivity {
                 public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                     if (response.isSuccessful()) {
                         Toast.makeText(PreviewPostActivity.this, "Đăng bài thành công!", Toast.LENGTH_SHORT).show();
-                        // Trở về MainActivity và báo thành công
+
+                        // --- THÊM LOGIC CẬP NHẬT WIDGET TẠI ĐÂY ---
+                        updateMyWidget();
+                        // -----------------------------------------
+
                         finish();
                     } else {
                         Toast.makeText(PreviewPostActivity.this, "Lỗi: " + response.code(), Toast.LENGTH_SHORT).show();
@@ -105,14 +113,12 @@ public class PreviewPostActivity extends AppCompatActivity {
 
                 @Override
                 public void onFailure(Call<ResponseBody> call, Throwable t) {
-                    Toast.makeText(PreviewPostActivity.this, "Kết nối thất bại: " + t.getMessage(), Toast.LENGTH_SHORT).show();
-                    android.util.Log.e("UPLOAD_ERR", t.getMessage());
+                    // ...
                 }
             });
 
         } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(this, "Lỗi hệ thống: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -135,5 +141,17 @@ public class PreviewPostActivity extends AppCompatActivity {
             e.printStackTrace();
             return null;
         }
+    }
+    // Hàm bổ trợ để gửi lệnh cập nhật tới Widget
+    private void updateMyWidget() {
+        Intent intent = new Intent(this, BocketWidgetProvider.class);
+        intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+
+        // Lấy danh sách ID của các Widget đang hiển thị trên màn hình Home
+        int[] ids = AppWidgetManager.getInstance(getApplication())
+                .getAppWidgetIds(new ComponentName(getApplication(), BocketWidgetProvider.class));
+
+        intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
+        sendBroadcast(intent);
     }
 }

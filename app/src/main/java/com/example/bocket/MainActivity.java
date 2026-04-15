@@ -58,6 +58,9 @@ import java.util.List;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
+import com.example.bocket.ui.BocketWidgetProvider;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -373,6 +376,7 @@ public class MainActivity extends AppCompatActivity {
                     } else {
                         postAdapter.notifyDataSetChanged();
                     }
+                    updateWidget();
                 }
             }
 
@@ -734,5 +738,15 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(MainActivity.this, "Lỗi kết nối mạng", Toast.LENGTH_SHORT).show();
             }
         });
+    }
+    private void updateWidget() {
+        Intent intent = new Intent(this, BocketWidgetProvider.class);
+        intent.setAction(android.appwidget.AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+
+        int[] ids = android.appwidget.AppWidgetManager.getInstance(getApplication())
+                .getAppWidgetIds(new android.content.ComponentName(getApplication(), BocketWidgetProvider.class));
+
+        intent.putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
+        sendBroadcast(intent);
     }
 }
